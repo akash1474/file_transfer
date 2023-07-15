@@ -27,7 +27,11 @@ project "file_transfer"
    pchheader "pch.h"
    pchsource "src/pch.cpp"
 
-   links {"ImGui","LunaSVG","opengl32","glfw3","cpr","libcurl","zlib","user32","shell32","gdi32"}
+   links {
+      "ImGui","LunaSVG","opengl32","glfw3","cpr","libcurl","zlib","user32","shell32","gdi32",
+      -- Curl Additional
+      "Normaliz","Ws2_32","Wldap32","Crypt32","advapi32"
+   }
 
    files { 
          "src/**.cpp"
@@ -59,6 +63,7 @@ project "file_transfer"
       optimize "On"
       characterset ("MBCS")
       staticruntime "On"
+      buildoptions { "/MP","/utf-8" }
 
    filter "configurations:Dist"
       kind "WindowedApp"
