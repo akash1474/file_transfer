@@ -1,0 +1,9 @@
+packages/*/*
+bin/
+.cache/
+compile_commands.json
+*.vcxproj
+*.ini
+!packages/lunasvg/premake5.lua
+!packages/imgui/premake5.lua
+*.sln
