@@ -1,3 +1,4 @@
+#include "FontAwesome6.h"
 #include "pch.h"
 #include "Browser.h"
 
@@ -43,51 +44,6 @@ namespace ImGui{
     int distance(const ImVec2& d1,const ImVec2& d2){
         return std::sqrt(std::pow(d1.x-d2.x,2)+std::pow(d1.y-d2.y,2));
     }
-
-    bool IconButtonRounded(const char* icon,int radius,const ImColor& iconColor,const ImColor& bgColor, const ImColor& hoverColor, const ImColor& heldColor)
-    {
-        ImGuiWindow* window = ImGui::GetCurrentWindow();
-        if (window->SkipItems) return false;
-        ImGuiContext& g = *GImGui;
-        const ImGuiStyle& style = g.Style;
-        const ImGuiID id = window->GetID(icon);
-
-        const ImVec2 size(radius*2,radius*2);
-        const ImVec2 pos = window->DC.CursorPos;
-        const ImVec2 mousePos=ImGui::GetMousePos();
-        const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
-
-        //Checking Events
-        const bool isHovered=(distance(pos,mousePos) <= radius);
-        const bool isClicked=(isHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left));
-
-        ImGui::ItemSize(bb, style.FramePadding.y);
-
-        //Drawing Circle
-        if(!isHovered && !isClicked) window->DrawList->AddCircle(pos,radius, bgColor);
-        if(!isClicked && isHovered){
-            window->DrawList->AddCircleFilled(pos, radius, hoverColor);
-        }else if(isClicked){
-            window->DrawList->AddCircleFilled(pos, radius, heldColor);
-        }
-
-        if (!ImGui::ItemAdd(bb, id)) return false;
-
-        //Rendering Text
-        ImVec2 fontSize=ImGui::CalcTextSize(icon);
-        const ImVec2 textPosition(pos.x-(fontSize.x+2*style.FramePadding.x)/4,pos.y-(fontSize.y+2*style.FramePadding.y)/4);
-
-        ImGui::PushStyleColor(ImGuiCol_Text, iconColor.Value);
-        ImGui::RenderText(textPosition, icon);
-        ImGui::PopStyleColor();
-
-
-        // if (isHovered) ImGui::PushStyleColor(ImGuiCol_Text, hoverColor);
-        // ImGui::RenderText(ImVec2(pos.x, pos.y), icon);
-        // if (isHovered) ImGui::PopStyleColor();
-
-        return isClicked;
-    }
 };
 
 
@@ -122,12 +78,22 @@ int main(){
     icon_config.MergeMode = true;
     icon_config.PixelSnapH = true;
     static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA};
+    size_t font_data_size = 0;
+    size_t icon_data_size = 0;
+    void* data_font = ImFileLoadToMemory("./assets/fonts/recursive_linear_medium.ttf", "rb", &font_data_size, 0);
+    void* data_icon = ImFileLoadToMemory(FONT_ICON_FILE_NAME_FAS, "rb", &icon_data_size, 0);
 
-    io.Fonts->AddFontFromFileTTF("./assets/fonts/recursive_linear_medium.ttf", 16);
-    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAS, 16 * 2.0f / 3.0f, &icon_config, icons_ranges);
+    io.Fonts->AddFontFromMemoryTTF(data_font, (int)font_data_size,16);
+    io.Fonts->AddFontFromMemoryTTF(data_icon, (int)icon_data_size,20*2.0f/3.0f,&icon_config,icons_ranges);
 
-    io.Fonts->AddFontFromFileTTF("./assets/fonts/recursive_linear_medium.ttf", 18);
-    io.Fonts->AddFontFromFileTTF(FONT_ICON_FILE_NAME_FAS, 18 * 2.0f / 3.0f, &icon_config, icons_ranges);
+    io.Fonts->AddFontFromMemoryTTF(data_font, (int)font_data_size,18);
+    io.Fonts->AddFontFromMemoryTTF(data_icon, (int)icon_data_size,18*2.0f/3.0f,&icon_config,icons_ranges);
+
+    io.Fonts->AddFontFromMemoryTTF(data_font, (int)font_data_size,14);
+    io.Fonts->AddFontFromMemoryTTF(data_icon, (int)icon_data_size,14*2.0f/3.0f,&icon_config,icons_ranges);
+
+    io.Fonts->AddFontFromMemoryTTF(data_font, (int)font_data_size,26);
+    io.Fonts->AddFontFromMemoryTTF(data_icon, (int)icon_data_size,26*2.0f/3.0f,&icon_config,icons_ranges);
 
     Browser browser("http://192.168.43.1:12345/",WIDTH,HEIGHT);
 

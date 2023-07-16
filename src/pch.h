@@ -9,6 +9,8 @@
 #include <stack>
 #include <queue>
 #include <algorithm>
+#include <sstream>
+
 
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
@@ -20,3 +22,4 @@
 
 #include "cpr/cpr.h"
 #include "FontAwesome6.h"
+
