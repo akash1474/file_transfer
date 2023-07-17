@@ -68,7 +68,6 @@ int main(){
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
-    ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
 
     if (!ImGui_ImplOpenGL2_Init()) std::cout << "Failed to initit OpenGL 2" << std::endl;
@@ -96,6 +95,9 @@ int main(){
     io.Fonts->AddFontFromMemoryTTF(data_icon, (int)icon_data_size,26*2.0f/3.0f,&icon_config,icons_ranges);
 
     Browser browser("http://192.168.43.1:12345/",WIDTH,HEIGHT);
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.FrameRounding = 2.0f;
+    style.ItemSpacing.y=6.0f;
 
     while (!glfwWindowShouldClose(window)) {
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);

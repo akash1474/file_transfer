@@ -52,29 +52,67 @@ bool Browser::fetchURLContent(std::string url){
 
 
 
+void renderMenuBar(){
+    if(ImGui::BeginMenuBar()){
+        static bool isSelected=false;
+        static bool themeSelected[5]={1,0,0,0,0};
+        // memset(themeSelected,0,sizeof(themeSelected));
+        if (ImGui::BeginMenu("Menu"))
+        {
+            ImGui::MenuItem("Change URL");
+            if(ImGui::BeginMenu("Theme")){
+                if(ImGui::MenuItem("Dark",0,themeSelected[0])) ImGui::StyleColorsDark();
+                if(ImGui::MenuItem("Light",0,themeSelected[1])) ImGui::StyleColorsLight();
+                if(ImGui::MenuItem("Classic",0,themeSelected[2])) ImGui::StyleColorsClassic();
+                ImGui::MenuItem("Deep Dark");
+                ImGui::MenuItem("Dracula");
+                ImGui::EndMenu();
+            }
+            ImGui::MenuItem("Check Update");
+            ImGui::MenuItem("About");
+            ImGui::EndMenu();
+        }
+        if(ImGui::BeginMenu("Help")){
+            ImGui::MenuItem("Key Bindings");
+            ImGui::MenuItem("Usage");
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();   
+    }
+
+}
+
 
 void Browser::render(){
+    const float headerHeight=60.0f;
     ImGui::SetNextWindowPos({0,0});
-    ImGui::SetNextWindowSize({(float)this->width,40.0f});
-    ImGui::Begin("##Header",0,ImGuiWindowFlags_NoNav|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
-    ImGui::SetCursorPos({15,5});
-    int i=0;
-    if(paths.size()>3) i=paths.size()-3;
-    std::ostringstream path_str;
-    while(i!=paths.size()){
-        path_str << paths[i] << " " << ICON_FA_ANGLE_RIGHT << " ";
-        i++;
+    ImGui::SetNextWindowSize({(float)this->width,headerHeight});
+    ImGui::Begin("##Header",0,ImGuiWindowFlags_NoNav|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize|ImGuiWindowFlags_MenuBar|ImGuiWindowFlags_NoScrollbar);
+    renderMenuBar();
+
+    ImGui::SetCursorPos({5,28.0f});
+    if(!showDownloads){
+        int i=0;
+        if(paths.size()>3) i=paths.size()-3;
+        std::ostringstream path_str;
+        while(i!=paths.size()){
+            path_str << paths[i] << " " << ICON_FA_ANGLE_RIGHT << " ";
+            i++;
+        }
+        ImGui::TextWrapped("%s", path_str.str().c_str());
+    }else{
+        ImGui::Text("Downloads");
     }
-    ImGui::TextWrapped("%s", path_str.str().c_str());
-    ImGui::SetCursorPos({ImGui::GetWindowWidth()-45,8.0f});
+
+
+    ImGui::SetCursorPos({ImGui::GetWindowWidth()-45,28.0f});
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
-    // if(ImGui::IconButton(showDownloads ? ICON_FA_FOLDER_TREE : ICON_FA_DOWNLOAD, ImColor(ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered]),ImColor(ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]))) this->showDownloads=!showDownloads;
     if(ImGui::Button(showDownloads ? ICON_FA_FOLDER_TREE : ICON_FA_DOWNLOAD,ImVec2(30,0)))this->showDownloads=!showDownloads;
     ImGui::PopFont();
     ImGui::End();
 
-    ImGui::SetNextWindowPos({0,40});
-    ImGui::SetNextWindowSize({(float)this->width,(float)this->height-40});
+    ImGui::SetNextWindowPos({0,headerHeight});
+    ImGui::SetNextWindowSize({(float)this->width,(float)this->height-headerHeight});
     if(this->showDownloads){
         this->m_DownloadManager.render();
         return;
@@ -112,11 +150,11 @@ void Browser::render(){
     std::stringstream oss;
     ImGui::ShowDemoWindow();
     for(const auto& file:this->files){
-        if(file.isFolder) oss << " " <<  ICON_FA_FOLDER << "  ";
-        else oss << " " << ICON_FA_FILE << "  ";
+        oss << " " << (file.isFolder ? ICON_FA_FOLDER : ICON_FA_FILE) << "  ";
         
         oss << file.title;
-        if(file.isFolder) ImGui::PushStyleColor(ImGuiCol_Text,ImGui::GetStyle().Colors[ImGuiCol_ButtonActive]);
+        if(file.isFolder) ImGui::PushStyleColor(ImGuiCol_Text,ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered]);
+        // if(file.isFolder) ImGui::PushStyleColor(ImGuiCol_Text,ImColor(61,153,114).Value);
         if (ImGui::Selectable(oss.str().c_str(), selected == count)) selected = count;
         if(file.isFolder) ImGui::PopStyleColor();
         if (((ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) || ImGui::IsKeyPressed(ImGuiKey_Enter) ||

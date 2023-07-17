@@ -61,6 +61,7 @@ project "file_transfer"
    filter {"configurations:Release"}
       runtime "Release"
       optimize "On"
+      symbols "Off"
       characterset ("MBCS")
       staticruntime "On"
       buildoptions { "/MP","/utf-8" }
