@@ -5,7 +5,7 @@
 #include "DownloadManager.h"
 #include <stdio.h>
 
-bool DownloadManager::initDownload(File* currFile){
+bool DownloadManager::initDownload(DFile* currFile){
 	if(!currFile) return false;
 	std::ofstream file=std::ofstream(currFile->title,std::ios::binary);
 	cpr::Session session=cpr::Session();
@@ -39,7 +39,7 @@ inline float fround(float var)
     return (float)value / 100;
 }
 
-bool DComponent(File* file){
+bool DComponent(DFile* file){
 	//Speed Calculation
 	file->end=std::chrono::high_resolution_clock::now();
 	file->duration=file->end - file->start;
@@ -118,9 +118,13 @@ bool DComponent(File* file){
 
 
 void DownloadManager::addDownload(File* file){
-	file->isDownloading=true;
-	downloads.push_back(file);
-	futures.push_back(std::async(std::launch::async,&DownloadManager::initDownload,this,file));
+	DFile* d_file=new DFile();
+	d_file->title=file->title;
+	d_file->location=file->location;
+	d_file->isDownloading=true;
+
+	downloads.push_back(d_file);
+	futures.push_back(std::async(std::launch::async,&DownloadManager::initDownload,this,d_file));
 }
 
 void DownloadManager::render(){
@@ -142,6 +146,7 @@ void DownloadManager::render(){
     		std::cout << "Downloads: " << downloads.size() << " Futures: " << futures.size() << std::endl;
     		std::cout << "Deleting:" << (*it)->title;
     		std::string title=(*it)->title;
+    		delete *it;
     		it=this->downloads.erase(it);
     		itf=this->futures.erase(itf);
     		std::cout << "Downloads: " << downloads.size() << " Futures: " << futures.size() << std::endl;

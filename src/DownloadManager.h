@@ -7,12 +7,12 @@
 class DownloadManager{
 	std::string path{0};
 public:
-	std::vector<File*> downloads;
+	std::vector<DFile*> downloads;
 	std::vector<std::future<bool>> futures;
 	DownloadManager(){}
-	bool initDownload(File* file=nullptr);
+	bool initDownload(DFile* file=nullptr);
 	void addDownload(File* file=nullptr);
-	bool DownloadComponent(File* file=nullptr);
+	bool DownloadComponent(DFile* file=nullptr);
 	void render();
 	~DownloadManager(){
 		path.clear();

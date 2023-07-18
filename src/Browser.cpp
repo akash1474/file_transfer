@@ -220,7 +220,10 @@ void Browser::render()
                 selected = 0;
             } else {
                 File* currFile = &this->files[selected];
-                if (currFile->isDownloading || std::filesystem::exists(currFile->title)) {
+                auto it=std::find_if(m_DownloadManager.downloads.begin(),m_DownloadManager.downloads.end(),[&currFile](const DFile* d_file){
+                    return d_file->title==currFile->title;
+                });
+                if (it!=m_DownloadManager.downloads.end() && ((*it)->isDownloading || std::filesystem::exists((*it)->title))) {
                     oss.clear();
                     oss.str("");
                     count++;
@@ -245,12 +248,13 @@ void Browser::render()
         if (ImGui::Button("Yes", ImVec2(50, 0))) {
             std::string title=files[selected].title;
             auto it=std::find_if(m_DownloadManager.downloads.begin(),m_DownloadManager.downloads.end(),
-                [&title](const File* file){
+                [&title](const DFile* file){
                 return  file->title==title;
             });
             if(it!=m_DownloadManager.downloads.end()){
                 int idx=std::distance(m_DownloadManager.downloads.begin(),it);
                 (*it)->isDownloading=false;
+                delete *it;
                 m_DownloadManager.downloads.erase(it);
                 m_DownloadManager.futures.erase(m_DownloadManager.futures.begin()+idx);
             }
