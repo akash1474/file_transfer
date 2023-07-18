@@ -26,6 +26,8 @@ bool DownloadManager::initDownload(File* currFile){
 		return true;
 	}));
 	cpr::Response res=session.Download(file);
+	if(res.status_code==200) currFile->isDownloaded=true;
+	currFile->isDownloading=false;
     std::cout << "Downloaded: " << currFile->title << " : " << (int)res.downloaded_bytes/1024 << "kb" << std::endl;
     return true;
 
@@ -58,9 +60,14 @@ bool DComponent(File* file){
 
 	ImVec2 textSize=ImGui::CalcTextSize(file->title.c_str());
 	textSize.y+=10;
-	if(textSize.x > threshold){
-		textSize.y=(textSize.y*2)-5;
+	const int original=textSize.y-10;
+	while(textSize.x >threshold){
+		textSize.y+=original;
+		textSize.x-=threshold;
 	}
+	// if(textSize.x > threshold){
+	// 	textSize.y=(textSize.y*2)-5;
+	// }
 	const ImVec2 size(window->Size.x-15,textSize.y+40);
 
 	ImVec2 pos=window->DC.CursorPos;
@@ -68,14 +75,7 @@ bool DComponent(File* file){
     ImGui::ItemSize(bb,0);
     if (!ImGui::ItemAdd(bb, id)) return false;
 
-    // bool isHovered=false;
-    // ImGui::ButtonBehavior(bb, id, &isHovered,0);
-
-	static ImColor bgColor=ImColor(30,30,30).Value;    
-	// static ImColor hColor=ImColor(50,50,50).Value;    
-	// if(isHovered) window->DrawList->AddRectFilled(pos, bb.Max,hColor,4);
-	window->DrawList->AddRectFilled(pos, bb.Max,bgColor,4);
-
+	window->DrawList->AddRectFilled(pos, bb.Max,ImGui::GetColorU32(ImGuiCol_FrameBg),2);
 
 	ImGui::RenderTextWrapped({pos.x+5,pos.y+5}, file->title.c_str(),0,threshold);
 	window->DrawList->AddRectFilled(
@@ -87,7 +87,7 @@ bool DComponent(File* file){
 	window->DrawList->AddRectFilled(
 		{pos.x+5,pos.y+textSize.y},
 		ImVec2(pos.x+5+width,pos.y+textSize.y+10),
-		ImColor(style.Colors[ImGuiCol_ButtonHovered]),
+		ImGui::GetColorU32(ImGuiCol_ButtonHovered),
 		2);
 
 	static char speed[16];
@@ -100,21 +100,18 @@ bool DComponent(File* file){
 	ImGui::PopFont();
 
 
-	// const ImGuiID bid = window->GetID(ICON_FA_XMARK);
 	ImVec2 bPos{window->Size.x-40,pos.y+((size.y-20)*0.5f)};
 	ImRect buttonSize{bPos,{bPos.x+20,bPos.y+20}};
-    const ImVec2 label_size = ImGui::CalcTextSize(ICON_FA_XMARK, NULL, true);
+    const ImVec2 label_size = ImGui::CalcTextSize(file->isDownloading ? ICON_FA_XMARK : ICON_FA_TRASH, NULL, true);
 
     bool isButtonHovered=false;
     bool isButtonHeld=false;
     bool isButtonClicked=ImGui::ButtonBehavior(buttonSize, id, &isButtonHovered,&isButtonHeld);
-    if(isButtonClicked){
-    	std::cout << "Clicked" << std::endl;
-    }
+
     const ImU32 col = ImGui::GetColorU32((isButtonHeld && isButtonHovered) ? ImGuiCol_ButtonActive : isButtonHovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
     ImGui::RenderNavHighlight(buttonSize, id);
     ImGui::RenderFrame(buttonSize.Min, buttonSize.Max, col, true, style.FrameRounding);
-    ImGui::RenderTextClipped(buttonSize.Min + style.FramePadding, ImVec2{buttonSize.Max.x-style.FramePadding.x,buttonSize.Max.y-style.FramePadding.y}, ICON_FA_XMARK, NULL, &label_size, style.ButtonTextAlign, &buttonSize);
+    ImGui::RenderTextClipped(buttonSize.Min + style.FramePadding, ImVec2{buttonSize.Max.x-style.FramePadding.x,buttonSize.Max.y-style.FramePadding.y},file->isDownloading ? ICON_FA_XMARK : ICON_FA_TRASH, NULL, &label_size, style.ButtonTextAlign, &buttonSize);
 
 	return isButtonClicked;
 }
@@ -141,11 +138,14 @@ void DownloadManager::render(){
     for(auto it=downloads.begin();it!=downloads.end();){
     	if(DComponent(*it)){
     		(*it)->isDownloading=false;
+    		(*it)->isDownloaded=false;
     		std::cout << "Downloads: " << downloads.size() << " Futures: " << futures.size() << std::endl;
     		std::cout << "Deleting:" << (*it)->title;
+    		std::string title=(*it)->title;
     		it=this->downloads.erase(it);
     		itf=this->futures.erase(itf);
     		std::cout << "Downloads: " << downloads.size() << " Futures: " << futures.size() << std::endl;
+    		if(std::filesystem::exists(title)) std::filesystem::remove(title);
     	}else{
     		it++;
     		itf++;

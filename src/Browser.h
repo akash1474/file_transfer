@@ -20,8 +20,7 @@ class Browser{
 public:
 	Browser(const char* url,int w,int h):basePath(url),width(w),height(h){
 		stk.push(basePath);
-		paths.push_back("Home");
-		// fetchURLContent(basePath);
+		paths.push_back("Root");
 		fetchFuture=std::async(std::launch::async,&Browser::fetchURLContent,this,basePath);
 	}
 
