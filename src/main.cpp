@@ -1,4 +1,5 @@
 #include "FontAwesome6.h"
+#include "GLFW/glfw3.h"
 #include "pch.h"
 #include "Browser.h"
 
@@ -98,7 +99,7 @@ int main(){
     ImGuiStyle& style = ImGui::GetStyle();
     style.FrameRounding = 2.0f;
     style.ItemSpacing.y=6.0f;
-
+    glfwSwapInterval(1);
     while (!glfwWindowShouldClose(window)) {
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

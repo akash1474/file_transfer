@@ -65,18 +65,14 @@ bool DComponent(DFile* file){
 		textSize.y+=original;
 		textSize.x-=threshold;
 	}
-	// if(textSize.x > threshold){
-	// 	textSize.y=(textSize.y*2)-5;
-	// }
-	const ImVec2 size(window->Size.x-15,textSize.y+40);
 
+	const ImVec2 size(window->Size.x-15,textSize.y+40.0f);
 	ImVec2 pos=window->DC.CursorPos;
     const ImRect bb(pos, ImVec2(pos.x + size.x, pos.y + size.y));
     ImGui::ItemSize(bb,0);
     if (!ImGui::ItemAdd(bb, id)) return false;
 
 	window->DrawList->AddRectFilled(pos, bb.Max,ImGui::GetColorU32(ImGuiCol_FrameBg),2);
-
 	ImGui::RenderTextWrapped({pos.x+5,pos.y+5}, file->title.c_str(),0,threshold);
 	window->DrawList->AddRectFilled(
 		{pos.x+5,pos.y+textSize.y},
@@ -97,8 +93,7 @@ bool DComponent(DFile* file){
 	static char progress[16];
 	sprintf(progress, "%.2f/%.2f MiB",file->downloaded/1048576.0f,file->size/1048576.0f);
 	ImGui::RenderText(ImVec2(window->Size.x-150,pos.y+textSize.y+15),progress);
-	ImGui::PopFont();
-
+	ImGui::PopFont();	
 
 	ImVec2 bPos{window->Size.x-40,pos.y+((size.y-20)*0.5f)};
 	ImRect buttonSize{bPos,{bPos.x+20,bPos.y+20}};
@@ -112,8 +107,7 @@ bool DComponent(DFile* file){
     ImGui::RenderNavHighlight(buttonSize, id);
     ImGui::RenderFrame(buttonSize.Min, buttonSize.Max, col, true, style.FrameRounding);
     ImGui::RenderTextClipped(buttonSize.Min + style.FramePadding, ImVec2{buttonSize.Max.x-style.FramePadding.x,buttonSize.Max.y-style.FramePadding.y},file->isDownloading ? ICON_FA_XMARK : ICON_FA_TRASH, NULL, &label_size, style.ButtonTextAlign, &buttonSize);
-
-	return isButtonClicked;
+    return isButtonClicked;
 }
 
 

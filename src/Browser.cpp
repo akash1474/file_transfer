@@ -1,7 +1,9 @@
 #include "imgui.h"
+#include "imgui_internal.h"
 #include "pch.h"
 #include "Browser.h"
 #include <iterator>
+#include <stdio.h>
 
 bool Browser::fetchURLContent(std::string url)
 {
@@ -49,14 +51,16 @@ bool Browser::fetchURLContent(std::string url)
 }
 
 
-void renderMenuBar()
+void renderMenuBar(bool& showChangeURL)
 {
     if (ImGui::BeginMenuBar()) {
         static bool isselected = false;
         static bool themeSelected[3] = {1, 0, 0};
+        bool static showFps=false;
+        bool static vSyncEnabled=true;
         // memset(themeSelected,0,sizeof(themeSelected));
         if (ImGui::BeginMenu("Menu")) {
-            ImGui::MenuItem("Change URL");
+            if(ImGui::MenuItem("Change IP/URL")) showChangeURL=true;
             if (ImGui::BeginMenu("Theme")) {
                 if (ImGui::MenuItem("Dark", 0, themeSelected[0])){
                     memset(themeSelected,0,sizeof(themeSelected));
@@ -79,10 +83,37 @@ void renderMenuBar()
             ImGui::MenuItem("About");
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Options")) {
+            if(ImGui::BeginMenu("Show FPS")){
+                if(ImGui::MenuItem("On",0,showFps)) showFps=true;
+                if(ImGui::MenuItem("Off",0,!showFps)) showFps=false;
+                ImGui::EndMenu();
+            }
+            if(ImGui::BeginMenu("Vsync")){
+                if(ImGui::MenuItem("On",0,vSyncEnabled)){
+                    glfwSwapInterval(1);
+                    vSyncEnabled=true;
+                }
+                if(ImGui::MenuItem("Off",0,!vSyncEnabled)){
+                    glfwSwapInterval(0);
+                    vSyncEnabled=false;
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Help")) {
             ImGui::MenuItem("Key Bindings");
             ImGui::MenuItem("Usage");
             ImGui::EndMenu();
+        }
+        if(showFps){
+            static char fps[16];
+            sprintf_s(fps,"%.2f FPS",ImGui::GetIO().Framerate);
+            static float width=(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(fps).x)-10;
+            ImGui::Dummy({width,10});
+            ImGui::Text("%s", fps);
         }
         ImGui::EndMenuBar();
     }
@@ -99,10 +130,26 @@ void showConnectionErrorUI(){
     }
 }
 
+void Browser::globalKeyBindings(){
+    if(ImGui::IsMouseClicked(ImGuiMouseButton_Right)){
+        this->showDownloads=!this->showDownloads;
+    }
+    if(ImGui::IsKeyPressed(ImGuiKey_Escape)){
+        this->showDownloads=false;
+        this->showSearchBar=false;
+    }
+    if(ImGui::IsKeyPressed(ImGuiKey_Slash)){
+        this->showSearchBar=true;
+    }
+    if(ImGui::IsKeyPressed(ImGuiKey_F2)){
+        this->showChangeUrl=true;
+    }
+}
 
-void keyBindings(int& selected,int max){
+
+void Browser::keyBindings(int& selected,int max){
     if(selected==-1) selected=0;
-    if(ImGui::IsKeyPressed(ImGuiKey_J)){
+    if(ImGui::IsKeyPressed(ImGuiKey_DownArrow)){
         selected++;
         if(selected > 20) ImGui::SetScrollY(selected*20);
         if(selected==max){
@@ -110,7 +157,7 @@ void keyBindings(int& selected,int max){
             ImGui::SetScrollY(0.0f);
         }
     }
-    if(ImGui::IsKeyPressed(ImGuiKey_K)){
+    if(ImGui::IsKeyPressed(ImGuiKey_UpArrow)){
         selected--;
         if(selected >= 0) ImGui::SetScrollY(selected*15);
         if(selected==-1){
@@ -121,16 +168,55 @@ void keyBindings(int& selected,int max){
 }
 
 
+char* toLower(char* s)
+{
+    for (char* p = s; *p; p++) *p = tolower(*p);
+    return s;
+}
+
+std::vector<File> searchFile(std::string sEl,std::vector<File>& files)
+{
+    static const size_t npos = -1;
+    int idx=0;
+    std::vector<File> foundFiles;
+    for (const auto el : files) {
+        std::string title=el.title;
+        if (!el.isFolder && std::string(toLower((char*)title.c_str())).find(toLower((char*)sEl.c_str())) != npos) {
+            foundFiles.push_back(el);
+        }
+        idx++;
+    }
+    return foundFiles;
+}
+
+void Browser::renderSearch(){
+    ImGui::SetNextWindowPos({0, this->height-30.0f});
+    ImGui::SetNextWindowSize({(float)this->width,30.0f});
+    ImGui::Begin("##SearchBar", 0,
+                 ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                     ImGuiWindowFlags_NoScrollbar| ImGuiWindowFlags_NoScrollWithMouse);
+
+    ImGui::Text(ICON_FA_MAGNIFYING_GLASS); ImGui::SameLine();
+    if(!ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)){
+        ImGui::SetKeyboardFocusHere(0);
+    }
+    ImGui::InputText("##search_text", query, IM_ARRAYSIZE(query));
+    ImGui::SameLine();
+    if(ImGui::Button("Close",ImVec2{ImGui::GetContentRegionAvail().x,0})) showSearchBar=false;
+    ImGui::End();
+}
+
+
+
 void Browser::render()
 {
+    this->globalKeyBindings();
     ImGui::ShowDemoWindow();
     const float headerHeight = 60.0f;
     ImGui::SetNextWindowPos({0, 0});
     ImGui::SetNextWindowSize({(float)this->width, headerHeight});
-    ImGui::Begin("##Header", 0,
-                 ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |
-                     ImGuiWindowFlags_NoScrollbar);
-    renderMenuBar();
+    ImGui::Begin("##Header", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |ImGuiWindowFlags_NoScrollbar);
+    renderMenuBar(this->showChangeUrl);
 
     ImGui::SetCursorPos({5, 28.0f});
     if (!showDownloads) {
@@ -157,13 +243,23 @@ void Browser::render()
     ImGui::End();
 
     ImGui::SetNextWindowPos({0, headerHeight});
-    ImGui::SetNextWindowSize({(float)this->width, (float)this->height - headerHeight});
+    float windowHeight=(float)this->height - headerHeight;
+    if(!this->showDownloads && this->showSearchBar) windowHeight-=30.0f;
+    ImGui::SetNextWindowSize({(float)this->width, windowHeight});
     if (this->showDownloads) {
         this->m_DownloadManager.render();
         return;
     }
-    // ImGui::GetStyle().Colors[ImGuiCol_Button]
+
+
+    if(showSearchBar) renderSearch();
+
+
     ImGui::Begin("##Browser", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+
+    if(this->showChangeUrl) ImGui::OpenPopup("Change IP");
+
+    //No Files Present -- Connection Error
     if (files.empty()) {
         ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[3]);
         static ImVec2 iconSize = ImGui::CalcTextSize(ICON_FA_ROTATE_RIGHT);
@@ -179,23 +275,24 @@ void Browser::render()
         ImGui::End();
         return;
     }
+
+
     int count = 0;
     static int selected = -1;
     keyBindings(selected, files.size());
     std::stringstream oss;
-    for (const auto& file : this->files) {
+    std::vector<File> searchedFiles;
+    if(showSearchBar) searchedFiles=searchFile(this->query, files);
+    for (const auto& file : showSearchBar ? searchedFiles : files ) {
         oss << " " << (file.isFolder ? ICON_FA_FOLDER : ICON_FA_FILE) << "  ";
 
         oss << file.title;
         if (file.isFolder) ImGui::PushStyleColor(ImGuiCol_Text,ImGui::GetColorU32(ImGuiCol_ButtonHovered));
-        // if(file.isDownloading || file.isDownloaded) ImGui::PushStyleColor(ImGuiCol_Text,ImGui::GetColorU32(ImGuiCol_ScrollbarGrabActive));
         if (ImGui::Selectable(oss.str().c_str(), selected == count)) selected = count;
-        // if(file.isDownloading || file.isDownloaded) ImGui::PopStyleColor();
         if (file.isFolder) ImGui::PopStyleColor();
-        if (((ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) || ImGui::IsKeyPressed(ImGuiKey_Enter) ||
-             ImGui::IsKeyPressed(ImGuiKey_O))) {
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
             if (selected == -1) selected = 0;
-            if (this->files[selected].title == "..") {
+            if (!showSearchBar && this->files[selected].title == "..") {
                 std::string last=stk.top();
                 stk.pop();
                 if(!this->fetchURLContent(stk.top())){
@@ -206,7 +303,7 @@ void Browser::render()
                 paths.pop_back();
                 continue;
             }
-            if (this->files.at(selected).isFolder) {
+            if (!showSearchBar && this->files.at(selected).isFolder) {
                 File* currFolder = &this->files[selected];
                 std::cout << "PATH: " << currFolder->location << std::endl;
                 stk.push(currFolder->location);
@@ -219,7 +316,7 @@ void Browser::render()
                 }
                 selected = 0;
             } else {
-                File* currFile = &this->files[selected];
+                File* currFile = (File*)&file;
                 auto it=std::find_if(m_DownloadManager.downloads.begin(),m_DownloadManager.downloads.end(),[&currFile](const DFile* d_file){
                     return d_file->title==currFile->title;
                 });
@@ -237,6 +334,7 @@ void Browser::render()
         oss.str("");
         count++;
     }
+
     static bool openPopup = true;
     if (ImGui::BeginPopupModal("Download Exists", &openPopup, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("File already exists!");
@@ -270,5 +368,38 @@ void Browser::render()
         ImGui::EndPopup();
     }
     showConnectionErrorUI();
+    static bool showPopUp = true;
+    if (ImGui::BeginPopupModal("Change IP", &showPopUp, ImGuiWindowFlags_AlwaysAutoResize)) {
+        static bool logged=false;
+        this->showChangeUrl=false;
+        ImGui::Text("Enter the new IP or select from below");
+        ImGuiIO& io=ImGui::GetIO();
+        static char ip[64];
+        if(!logged){
+            std::cout << io.IniFilename << std::endl;
+            std::cout << getenv("USERPROFILE") << std::endl;
+            std::cout << std::filesystem::current_path().generic_string() << std::endl;
+            // ImGuiTable table;
+            // ImGuiSettingsHandler ini_handler;
+            // ini_handler.TypeName = "Window";
+            // ini_handler.TypeHash = ImHashStr("Window");
+            // ini_handler.ClearAllFn = ImWindowSettingsHandler_ClearAll;
+            // ini_handler.ReadOpenFn = WindowSettingsHandler_ReadOpen;
+            // ini_handler.ReadLineFn = WindowSettingsHandler_ReadLine;
+            // ini_handler.ApplyAllFn = WindowSettingsHandler_ApplyAll;
+            // ini_handler.WriteAllFn = WindowSettingsHandler_WriteAll;
+            // AddSettingsHandler(&ini_handler);
+            // table.
+            // ImGui::TableSaveSettings(ImGuiTable *table)
+            // ImGui::SaveIniSettingsToDisk("usr_settings.ini");
+            // ImGui::LoadIniSettingsFromDisk("usr_settings.init");
+            logged=true;
+        }
+        if(ImGui::InputText("##ip_input",ip,IM_ARRAYSIZE(ip))){
+            std::cout << ip << std::endl;
+        }
+        ImGui::Button("Open",ImVec2{60,0});
+        ImGui::EndPopup();
+    }
     ImGui::End();
 }
