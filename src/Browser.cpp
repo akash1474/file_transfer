@@ -1,9 +1,12 @@
+#include "FontAwesome6.h"
+#include "GLFW/glfw3.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "pch.h"
 #include "Browser.h"
 #include <iterator>
 #include <stdio.h>
+#include <stdlib.h>
 
 bool Browser::fetchURLContent(std::string url)
 {
@@ -51,7 +54,7 @@ bool Browser::fetchURLContent(std::string url)
 }
 
 
-void renderMenuBar(bool& showChangeURL)
+void renderMenuBar(bool& showChangeURL,bool& showSearchBar)
 {
     if (ImGui::BeginMenuBar()) {
         static bool isselected = false;
@@ -61,18 +64,19 @@ void renderMenuBar(bool& showChangeURL)
         // memset(themeSelected,0,sizeof(themeSelected));
         if (ImGui::BeginMenu("Menu")) {
             if(ImGui::MenuItem("Change IP/URL")) showChangeURL=true;
+            if(ImGui::MenuItem("Find File")) showSearchBar=true;
             if (ImGui::BeginMenu("Theme")) {
-                if (ImGui::MenuItem("Dark", 0, themeSelected[0])){
+                if (ImGui::MenuItem("Dark",0, themeSelected[0])){
                     memset(themeSelected,0,sizeof(themeSelected));
                     themeSelected[0]=true;
                     ImGui::StyleColorsDark();
                 }
-                if (ImGui::MenuItem("Light", 0, themeSelected[1])){
+                if (ImGui::MenuItem("Light",0, themeSelected[1])){
                     memset(themeSelected,0,sizeof(themeSelected));
                     themeSelected[1]=true;
                     ImGui::StyleColorsLight();
                 }
-                if (ImGui::MenuItem("Classic", 0, themeSelected[2])){
+                if (ImGui::MenuItem("Classic",0, themeSelected[2])){
                     memset(themeSelected,0,sizeof(themeSelected));
                     themeSelected[2]=true;
                     ImGui::StyleColorsClassic();
@@ -80,32 +84,36 @@ void renderMenuBar(bool& showChangeURL)
                 ImGui::EndMenu();
             }
             ImGui::MenuItem("Check Update");
-            ImGui::MenuItem("About");
+            ImGui::MenuItem("Exit");
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Options")) {
-            if(ImGui::BeginMenu("Show FPS")){
-                if(ImGui::MenuItem("On",0,showFps)) showFps=true;
-                if(ImGui::MenuItem("Off",0,!showFps)) showFps=false;
-                ImGui::EndMenu();
+            if(ImGui::MenuItem("Show FPS",0,showFps)) showFps=!showFps;
+            if(ImGui::MenuItem("Vsync",0,vSyncEnabled)){
+                vSyncEnabled=!vSyncEnabled;
+                vSyncEnabled ? glfwSwapInterval(1) :  glfwSwapInterval(0);
             }
-            if(ImGui::BeginMenu("Vsync")){
-                if(ImGui::MenuItem("On",0,vSyncEnabled)){
-                    glfwSwapInterval(1);
-                    vSyncEnabled=true;
+            if(ImGui::BeginMenu("Downloads")){
+                if(ImGui::BeginMenu("Location")){
+                    ImGui::MenuItem("Current Folder");
+                    ImGui::MenuItem("Downloads");
+                    ImGui::EndMenu();
                 }
-                if(ImGui::MenuItem("Off",0,!vSyncEnabled)){
-                    glfwSwapInterval(0);
-                    vSyncEnabled=false;
-                }
+                if(ImGui::MenuItem("Change Location")){}
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
         }
 
-        if (ImGui::BeginMenu("Help")) {
-            ImGui::MenuItem("Key Bindings");
-            ImGui::MenuItem("Usage");
+        if (ImGui::BeginMenu("Help",true)) {
+            ImGui::Spacing();
+            ImGui::Text("©Akash Pandit. All Rights Reserved");
+            ImGui::Spacing();
+            ImGui::Spacing();
+            ImGui::Text("Version: 0.1.2");
+            ImGui::Text("Contact: panditakash38@gmail.com");
+            ImGui::Separator();
+            ImGui::MenuItem("Help","F1");
             ImGui::EndMenu();
         }
         if(showFps){
@@ -120,7 +128,7 @@ void renderMenuBar(bool& showChangeURL)
 }
 
 void showConnectionErrorUI(){
-    static bool openPopup = true;
+    bool openPopup = true;
     if (ImGui::BeginPopupModal("Connection Error", &openPopup, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("Unable to connect the device");
         ImGui::Separator();
@@ -128,6 +136,43 @@ void showConnectionErrorUI(){
         if (ImGui::Button("OK", ImVec2(50, 0))) ImGui::CloseCurrentPopup();
         ImGui::EndPopup();
     }
+}
+
+void Browser::showChangeUrlPopUp(){
+    bool showPopUp = true;
+    if (ImGui::BeginPopupModal("Change URL", &showPopUp, ImGuiWindowFlags_AlwaysAutoResize)) {
+        static bool logged=false;
+        this->showChangeUrl=false;
+        ImGui::Text("Enter the new IP or select from below");
+        ImGuiIO& io=ImGui::GetIO();
+        static char ip[64];
+        if(!logged){
+            std::cout << io.IniFilename << std::endl;
+            std::cout << getenv("USERPROFILE") << std::endl;
+            std::cout << std::filesystem::current_path().generic_string() << std::endl;
+            // ImGuiTable table;
+            // ImGuiSettingsHandler ini_handler;
+            // ini_handler.TypeName = "Window";
+            // ini_handler.TypeHash = ImHashStr("Window");
+            // ini_handler.ClearAllFn = ImWindowSettingsHandler_ClearAll;
+            // ini_handler.ReadOpenFn = WindowSettingsHandler_ReadOpen;
+            // ini_handler.ReadLineFn = WindowSettingsHandler_ReadLine;
+            // ini_handler.ApplyAllFn = WindowSettingsHandler_ApplyAll;
+            // ini_handler.WriteAllFn = WindowSettingsHandler_WriteAll;
+            // AddSettingsHandler(&ini_handler);
+            // table.
+            // ImGui::TableSaveSettings(ImGuiTable *table)
+            // ImGui::SaveIniSettingsToDisk("usr_settings.ini");
+            // ImGui::LoadIniSettingsFromDisk("usr_settings.init");
+            logged=true;
+        }
+        if(ImGui::InputText("##ip_input",ip,IM_ARRAYSIZE(ip))){
+            std::cout << ip << std::endl;
+        }
+        ImGui::Button("Open",ImVec2{60,0});
+        ImGui::EndPopup();
+    }
+
 }
 
 void Browser::globalKeyBindings(){
@@ -216,7 +261,7 @@ void Browser::render()
     ImGui::SetNextWindowPos({0, 0});
     ImGui::SetNextWindowSize({(float)this->width, headerHeight});
     ImGui::Begin("##Header", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |ImGuiWindowFlags_NoScrollbar);
-    renderMenuBar(this->showChangeUrl);
+    renderMenuBar(this->showChangeUrl,this->showSearchBar);
 
     ImGui::SetCursorPos({5, 28.0f});
     if (!showDownloads) {
@@ -232,6 +277,8 @@ void Browser::render()
         ImGui::PopTextWrapPos();
     } else {
         ImGui::Text("Downloads");
+        ImGui::SetCursorPos({ImGui::GetWindowWidth() - 170, 28.0f});
+        if(ImGui::Button("Open Downloads",ImVec2{0,24})) system("explorer .");
     }
 
 
@@ -239,7 +286,6 @@ void Browser::render()
     ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[1]);
     if (ImGui::Button(showDownloads ? ICON_FA_FOLDER_TREE : ICON_FA_DOWNLOAD, ImVec2(30, 0))) this->showDownloads = !showDownloads;
     ImGui::PopFont();
-    showConnectionErrorUI();
     ImGui::End();
 
     ImGui::SetNextWindowPos({0, headerHeight});
@@ -257,21 +303,36 @@ void Browser::render()
 
     ImGui::Begin("##Browser", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
-    if(this->showChangeUrl) ImGui::OpenPopup("Change IP");
+    if(this->showChangeUrl) ImGui::OpenPopup("Change URL");
 
     //No Files Present -- Connection Error
     if (files.empty()) {
-        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[3]);
-        static ImVec2 iconSize = ImGui::CalcTextSize(ICON_FA_ROTATE_RIGHT);
+        // ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[3]);
+        // static ImVec2 iconSize = ImGui::CalcTextSize(ICON_FA_ROTATE_RIGHT);
+        // ImVec2 window = ImGui::GetWindowSize();
+        // ImVec2 position((window.x - iconSize.x) * 0.5f, (window.y - iconSize.y) * 0.5f);
+        // ImGui::SetCursorPos(position);
+        // if (ImGui::IconButton(ICON_FA_ROTATE_RIGHT, ImColor(25, 155, 255), ImColor(36, 103, 255))) {
+        //     if (!fetchURLContent(stk.top())) {
+        //         ImGui::OpenPopup("Connection Error");
+        //     }
+        // }
         ImVec2 window = ImGui::GetWindowSize();
-        ImVec2 position((window.x - iconSize.x) * 0.5f, (window.y - iconSize.y) * 0.5f);
+        ImVec2 position((window.x - 120.0f) * 0.5f, (window.y - 25) * 0.5f);
         ImGui::SetCursorPos(position);
-        if (ImGui::IconButton(ICON_FA_ROTATE_RIGHT, ImColor(25, 155, 255), ImColor(36, 103, 255))) {
+        if (ImGui::Button(ICON_FA_ROTATE_RIGHT" Refresh",ImVec2{120.0f,25})) {
             if (!fetchURLContent(stk.top())) {
                 ImGui::OpenPopup("Connection Error");
             }
         }
-        ImGui::PopFont();
+        position.y+=35.0f;
+        ImGui::SetCursorPos(position);
+        if (ImGui::Button(ICON_FA_LINK" Change URL",ImVec2{120.0f,25})){
+            ImGui::OpenPopup("Change URL");
+        }
+        // ImGui::PopFont();
+        showConnectionErrorUI();
+        showChangeUrlPopUp();
         ImGui::End();
         return;
     }
@@ -335,7 +396,7 @@ void Browser::render()
         count++;
     }
 
-    static bool openPopup = true;
+    bool openPopup = true;
     if (ImGui::BeginPopupModal("Download Exists", &openPopup, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("File already exists!");
         ImGui::Separator();
@@ -368,38 +429,6 @@ void Browser::render()
         ImGui::EndPopup();
     }
     showConnectionErrorUI();
-    static bool showPopUp = true;
-    if (ImGui::BeginPopupModal("Change IP", &showPopUp, ImGuiWindowFlags_AlwaysAutoResize)) {
-        static bool logged=false;
-        this->showChangeUrl=false;
-        ImGui::Text("Enter the new IP or select from below");
-        ImGuiIO& io=ImGui::GetIO();
-        static char ip[64];
-        if(!logged){
-            std::cout << io.IniFilename << std::endl;
-            std::cout << getenv("USERPROFILE") << std::endl;
-            std::cout << std::filesystem::current_path().generic_string() << std::endl;
-            // ImGuiTable table;
-            // ImGuiSettingsHandler ini_handler;
-            // ini_handler.TypeName = "Window";
-            // ini_handler.TypeHash = ImHashStr("Window");
-            // ini_handler.ClearAllFn = ImWindowSettingsHandler_ClearAll;
-            // ini_handler.ReadOpenFn = WindowSettingsHandler_ReadOpen;
-            // ini_handler.ReadLineFn = WindowSettingsHandler_ReadLine;
-            // ini_handler.ApplyAllFn = WindowSettingsHandler_ApplyAll;
-            // ini_handler.WriteAllFn = WindowSettingsHandler_WriteAll;
-            // AddSettingsHandler(&ini_handler);
-            // table.
-            // ImGui::TableSaveSettings(ImGuiTable *table)
-            // ImGui::SaveIniSettingsToDisk("usr_settings.ini");
-            // ImGui::LoadIniSettingsFromDisk("usr_settings.init");
-            logged=true;
-        }
-        if(ImGui::InputText("##ip_input",ip,IM_ARRAYSIZE(ip))){
-            std::cout << ip << std::endl;
-        }
-        ImGui::Button("Open",ImVec2{60,0});
-        ImGui::EndPopup();
-    }
+    showChangeUrlPopUp();
     ImGui::End();
 }

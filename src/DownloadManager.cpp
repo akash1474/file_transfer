@@ -1,9 +1,5 @@
 #include "pch.h"
-#include "FontAwesome6.h"
-#include "imgui.h"
-#include "imgui_internal.h"
 #include "DownloadManager.h"
-#include <stdio.h>
 
 bool DownloadManager::initDownload(DFile* currFile){
 	if(!currFile) return false;

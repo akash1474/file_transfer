@@ -21,6 +21,7 @@ class Browser{
 	bool fetchURLContent(std::string url);
 	void keyBindings(int& selected,int max);
 	void globalKeyBindings();
+	void showChangeUrlPopUp();
 public:
 	Browser(const char* url,int w,int h):basePath(url),width(w),height(h){
 		stk.push(basePath);
