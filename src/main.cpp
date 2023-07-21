@@ -79,10 +79,10 @@ int main(){
     icon_config.MergeMode = true;
     icon_config.PixelSnapH = true;
     static const ImWchar icons_ranges[] = {ICON_MIN_FA, ICON_MAX_FA};
-    size_t font_data_size = 0;
-    size_t icon_data_size = 0;
-    void* data_font = ImFileLoadToMemory("./assets/fonts/recursive_linear_medium.ttf", "rb", &font_data_size, 0);
-    void* data_icon = ImFileLoadToMemory(FONT_ICON_FILE_NAME_FAS, "rb", &icon_data_size, 0);
+    size_t font_data_size = sizeof(data_font);
+    size_t icon_data_size = sizeof(data_icon);
+    // void* data_font = ImFileLoadToMemory("./assets/fonts/recursive_linear_medium.ttf", "rb", &font_data_size, 0);
+    // void* data_icon = ImFileLoadToMemory(FONT_ICON_FILE_NAME_FAS, "rb", &icon_data_size, 0);
 
     io.Fonts->AddFontFromMemoryTTF(data_font, (int)font_data_size,16);
     io.Fonts->AddFontFromMemoryTTF(data_icon, (int)icon_data_size,20*2.0f/3.0f,&icon_config,icons_ranges);
@@ -96,11 +96,11 @@ int main(){
     io.Fonts->AddFontFromMemoryTTF(data_font, (int)font_data_size,26);
     io.Fonts->AddFontFromMemoryTTF(data_icon, (int)icon_data_size,26*2.0f/3.0f,&icon_config,icons_ranges);
 
+    glfwSwapInterval(1);
     Browser browser("http://192.168.43.1:12345/",WIDTH,HEIGHT);
     ImGuiStyle& style = ImGui::GetStyle();
     style.FrameRounding = 2.0f;
     style.ItemSpacing.y=6.0f;
-    glfwSwapInterval(1);
     while (!glfwWindowShouldClose(window)) {
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

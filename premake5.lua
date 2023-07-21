@@ -14,6 +14,8 @@ includeDirs["LunaSVG"]="packages/lunasvg/include"
 includeDirs["SpdLog"]="packages/spdlog/include"
 includeDirs["libcpr"]="packages/cpr/include"
 includeDirs["glfw"]="packages/glfw/include"
+includeDirs["clipboardxx"]="packages/clipboardxx"
+includeDirs["mini"]="packages/mini"
 include "packages/imgui"
 include "packages/lunasvg"
 
@@ -43,6 +45,8 @@ project "file_transfer"
       "%{includeDirs.LunaSVG}",
       "%{includeDirs.SpdLog}",
       "%{includeDirs.libcpr}",
+      "%{includeDirs.clipboardxx}",
+      "%{includeDirs.mini}",
       "%{includeDirs.glfw}"
    }
    libdirs{"packages/cpr/lib","packages/glfw/lib"}

@@ -4,9 +4,84 @@
 #include "imgui_internal.h"
 #include "pch.h"
 #include "Browser.h"
+#include <algorithm>
 #include <iterator>
+#include <sstream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
+
+
+Browser::Browser(const char* url,int w,int h):basePath(url),width(w),height(h){
+    std::string userFolder(getenv("USERPROFILE"));
+    std::replace(userFolder.begin(), userFolder.end(), '\\', '/');
+    std::string savePath=userFolder+"/file_transer";
+    if(!std::filesystem::exists(savePath)) std::filesystem::create_directory(savePath);
+    savePath+="/ft.ini";
+    file=new mINI::INIFile(savePath);
+    file->read(ini);
+    if(!std::filesystem::exists(savePath)){
+        //Initilze
+        std::cout << "Initializing Settings" << std::endl;
+        ini["settings"]["fps"]="0";
+        ini["settings"]["vsync"]="1";
+        ini["settings"]["dloc"]=(userFolder+"/Downloads/File Transfer");
+        this->downloadsLocation=userFolder+"/Downloads/File Transfer";
+        ini["settings"]["default"]="0";
+        ini["settings"]["theme"]="0";
+        themeSelected[0]=1;
+        file->write(ini,true);
+    }else{
+        //Load
+        std::cout << "Loading Settings" << std::endl;
+        if(!ini.has("settings")) ini["settings"];
+        this->showFps= ini["settings"].has("fps") ? stoi(ini["settings"]["fps"]): false;
+        this->vSyncEnabled= ini["settings"].has("vsync") ? stoi(ini["settings"]["vsync"]): true;
+        if(!vSyncEnabled) glfwSwapInterval(0);
+        this->downloadsLocation= ini["settings"].has("dloc") ? ini["settings"]["dloc"]: (userFolder+"/Downloads/File Transfer");
+        if(!std::filesystem::exists(downloadsLocation)) downloadsLocation=userFolder+"/Downloads/File Transfer";
+        this->defaultDownloadLocation= ini["settings"].has("default") ? stoi(ini["settings"]["default"]): false;
+        usrTheme= ini["settings"].has("theme") ? stoi(ini["settings"]["theme"]): 0;
+        if( 0 > usrTheme || usrTheme > 2) usrTheme=0;
+        this->themeSelected[usrTheme]=1;
+        
+        switch(usrTheme){
+        case 0:
+            ImGui::StyleColorsDark();
+            break;
+        case 1:
+            ImGui::StyleColorsLight();
+            break;
+        case 2:
+            ImGui::StyleColorsClassic();
+            break;
+        }
+        if(ini.has("ips")){
+            for(auto const& it:ini["ips"]){
+                this->IPs.push_back(it.second);
+                std::cout << it.second << std::endl;
+            }
+        }
+
+        saveSettings();
+    }
+    stk.push(basePath);
+    paths.push_back("Root");
+    fetchFuture=std::async(std::launch::async,&Browser::fetchURLContent,this,basePath);
+}
+
+void Browser::saveSettings(){
+    std::cout << "Saving Settings" << std::endl;
+    ini["settings"]["fps"]=this->showFps ? "1" : "0";
+    ini["settings"]["vsync"]=this->vSyncEnabled ? "1":"0";
+    ini["settings"]["dloc"]=this->downloadsLocation;
+    ini["settings"]["default"]=this->defaultDownloadLocation ? "1": "0";
+    ini["settings"]["theme"]=std::to_string(usrTheme);
+    file->write(ini,true);
+    this->settingsUpdate=false;
+}
+
+
 
 bool Browser::fetchURLContent(std::string url)
 {
@@ -54,31 +129,32 @@ bool Browser::fetchURLContent(std::string url)
 }
 
 
-void renderMenuBar(bool& showChangeURL,bool& showSearchBar)
+void Browser::renderMenuBar()
 {
     if (ImGui::BeginMenuBar()) {
-        static bool isselected = false;
-        static bool themeSelected[3] = {1, 0, 0};
-        bool static showFps=false;
-        bool static vSyncEnabled=true;
-        // memset(themeSelected,0,sizeof(themeSelected));
         if (ImGui::BeginMenu("Menu")) {
-            if(ImGui::MenuItem("Change IP/URL")) showChangeURL=true;
+            if(ImGui::MenuItem("Change IP/URL")) showChangeUrl=true;
             if(ImGui::MenuItem("Find File")) showSearchBar=true;
             if (ImGui::BeginMenu("Theme")) {
                 if (ImGui::MenuItem("Dark",0, themeSelected[0])){
                     memset(themeSelected,0,sizeof(themeSelected));
                     themeSelected[0]=true;
+                    usrTheme=0;
                     ImGui::StyleColorsDark();
+                    this->settingsUpdate=true;
                 }
                 if (ImGui::MenuItem("Light",0, themeSelected[1])){
                     memset(themeSelected,0,sizeof(themeSelected));
+                    usrTheme=1;
                     themeSelected[1]=true;
+                    this->settingsUpdate=true;
                     ImGui::StyleColorsLight();
                 }
                 if (ImGui::MenuItem("Classic",0, themeSelected[2])){
                     memset(themeSelected,0,sizeof(themeSelected));
+                    this->settingsUpdate=true;
                     themeSelected[2]=true;
+                    usrTheme=2;
                     ImGui::StyleColorsClassic();
                 }
                 ImGui::EndMenu();
@@ -88,9 +164,13 @@ void renderMenuBar(bool& showChangeURL,bool& showSearchBar)
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Options")) {
-            if(ImGui::MenuItem("Show FPS",0,showFps)) showFps=!showFps;
+            if(ImGui::MenuItem("Show FPS",0,showFps)){
+                showFps=!showFps;
+                this->settingsUpdate=true;
+            }
             if(ImGui::MenuItem("Vsync",0,vSyncEnabled)){
                 vSyncEnabled=!vSyncEnabled;
+                this->settingsUpdate=true;
                 vSyncEnabled ? glfwSwapInterval(1) :  glfwSwapInterval(0);
             }
             if(ImGui::BeginMenu("Downloads")){
@@ -148,8 +228,6 @@ void Browser::showChangeUrlPopUp(){
         static char ip[64];
         if(!logged){
             std::cout << io.IniFilename << std::endl;
-            std::cout << getenv("USERPROFILE") << std::endl;
-            std::cout << std::filesystem::current_path().generic_string() << std::endl;
             // ImGuiTable table;
             // ImGuiSettingsHandler ini_handler;
             // ini_handler.TypeName = "Window";
@@ -193,6 +271,11 @@ void Browser::globalKeyBindings(){
 
 
 void Browser::keyBindings(int& selected,int max){
+    if(ImGui::IsKeyDown(ImGuiKey_ModCtrl) && ImGui::IsKeyPressed(ImGuiKey_C)){
+        clipboardxx::clipboard clipboard;
+        clipboard << this->files[selected].location;
+    }
+
     if(selected==-1) selected=0;
     if(ImGui::IsKeyPressed(ImGuiKey_DownArrow)){
         selected++;
@@ -256,12 +339,13 @@ void Browser::renderSearch(){
 void Browser::render()
 {
     this->globalKeyBindings();
+    if(this->settingsUpdate) saveSettings();
     ImGui::ShowDemoWindow();
     const float headerHeight = 60.0f;
     ImGui::SetNextWindowPos({0, 0});
     ImGui::SetNextWindowSize({(float)this->width, headerHeight});
     ImGui::Begin("##Header", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |ImGuiWindowFlags_NoScrollbar);
-    renderMenuBar(this->showChangeUrl,this->showSearchBar);
+    renderMenuBar();
 
     ImGui::SetCursorPos({5, 28.0f});
     if (!showDownloads) {
@@ -350,6 +434,15 @@ void Browser::render()
         oss << file.title;
         if (file.isFolder) ImGui::PushStyleColor(ImGuiCol_Text,ImGui::GetColorU32(ImGuiCol_ButtonHovered));
         if (ImGui::Selectable(oss.str().c_str(), selected == count)) selected = count;
+        if(!file.isFolder && ImGui::IsItemHovered()){
+            if(ImGui::CalcTextSize(file.title.c_str()).x > (this->width-30)){
+                ImGui::BeginTooltip();
+                ImGui::PushTextWrapPos(300);
+                ImGui::Text(file.title.c_str());
+                ImGui::PopTextWrapPos();
+                ImGui::EndTooltip();
+            }
+        }
         if (file.isFolder) ImGui::PopStyleColor();
         if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0)) {
             if (selected == -1) selected = 0;
