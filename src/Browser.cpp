@@ -240,7 +240,7 @@ void Browser::renderMenuBar()
             ImGui::Text("Version: 0.1.2");
             ImGui::Text("Contact: panditakash38@gmail.com");
             ImGui::Separator();
-            ImGui::MenuItem("Help","F1");
+            if(ImGui::MenuItem("Help","F1")) showHelp=true;
             ImGui::EndMenu();
         }
         if(showFps){
@@ -304,20 +304,52 @@ void Browser::showChangeUrlPopUp(){
 
 }
 
+
+
+void showHelpPopUp(){
+    bool openPopup = true;
+    if (ImGui::BeginPopupModal("Help", &openPopup, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::Text("Mouse Bindings");
+        ImGui::Separator();
+        ImGui::Text("Double Click  - Enter Folder / Download File");
+        ImGui::Text("Right Click    - Go Back");
+        ImGui::Text("Middle Click  - Toggle Downloads View");
+        ImGui::Spacing();
+        ImGui::Spacing();
+        ImGui::Text("Key Bindings");
+        ImGui::Separator();
+        ImGui::Text("F1     - Show Help");
+        ImGui::Text("F2     - Change URL / IP");
+        ImGui::Text("F5     - Refresh Page");
+        ImGui::Text("/       - Search Files");
+        ImGui::Text("Esc    - Root / Close Search");
+        ImGui::Text("Ctrl+C - Copy selected file link");
+        ImGui::EndPopup();
+    }
+
+}
+
+
 void Browser::globalKeyBindings(){
+    if(ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) this->showDownloads=!this->showDownloads;
     if(ImGui::IsMouseClicked(ImGuiMouseButton_Right)){
-        this->showDownloads=!this->showDownloads;
+        if(stk.size()==1) return;
+        std::string last=stk.top();
+        stk.pop();
+        if(!this->fetchURLContent(stk.top())){
+            this->showConnectionError=true;
+            stk.push(last);
+        }else{
+            paths.pop_back();
+        }
     }
     if(ImGui::IsKeyPressed(ImGuiKey_Escape)){
         this->showDownloads=false;
         this->showSearchBar=false;
     }
-    if(ImGui::IsKeyPressed(ImGuiKey_Slash)){
-        this->showSearchBar=true;
-    }
-    if(ImGui::IsKeyPressed(ImGuiKey_F2)){
-        this->showChangeUrl=true;
-    }
+    if(ImGui::IsKeyPressed(ImGuiKey_Slash)) this->showSearchBar=true;
+    if(ImGui::IsKeyPressed(ImGuiKey_F1)) this->showHelp=true;
+    if(ImGui::IsKeyPressed(ImGuiKey_F2)) this->showChangeUrl=true;
     if(ImGui::IsKeyPressed(ImGuiKey_F5)){
         if(!fetchURLContent(stk.top())){
             this->showConnectionError=true; 
@@ -404,10 +436,15 @@ void Browser::renderHomePage(){
     if(!isFocused){
         logo_img.load_from_buffer((const char*)logo,70,70);
     }
+    if(ImGui::IsKeyPressed(ImGuiKey_F1)) showHelp=true;
 
     ImGui::SetNextWindowSize({width,height});
     ImGui::Begin("##HomePage", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |ImGuiWindowFlags_NoScrollbar);
     renderMenuBar();
+    if(showHelp){
+       ImGui::OpenPopup("Help"); 
+       showHelp=false;
+    }
     ImVec2 size=ImGui::GetWindowSize();
     ImGui::SetCursorPos({(size.x-70.0f)*0.5f,190.0f});
     ImGui::Image((void*)(intptr_t)logo_img.texture,{70,70});
@@ -450,7 +487,7 @@ void Browser::renderHomePage(){
         }
     }
 
-
+    showHelpPopUp();
     ImGui::End();
 }
 
@@ -497,7 +534,7 @@ void Browser::render()
 
     ImGui::SetNextWindowPos({0, headerHeight});
     float windowHeight=(float)this->height - headerHeight;
-    if(!this->showDownloads && this->showSearchBar) windowHeight-=30.0f;
+    if(this->showSearchBar) windowHeight-=30.0f;
     ImGui::SetNextWindowSize({(float)this->width, windowHeight});
     if (this->showDownloads) {
         this->m_DownloadManager.render();
@@ -505,12 +542,13 @@ void Browser::render()
     }
 
 
-    if(showSearchBar) renderSearch();
-
-
     ImGui::Begin("##Browser", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
     if(this->showChangeUrl) ImGui::OpenPopup("Change URL");
+    if(this->showHelp){
+        ImGui::OpenPopup("Help");
+        this->showHelp=false;
+    }
     if(this->showConnectionError){
         ImGui::OpenPopup("Connection Error");
         this->showConnectionError=false;
@@ -534,6 +572,7 @@ void Browser::render()
         // ImGui::PopFont();
         showConnectionErrorUI();
         showChangeUrlPopUp();
+        showHelpPopUp();
         ImGui::End();
         return;
     }
@@ -640,5 +679,7 @@ void Browser::render()
     }
     showConnectionErrorUI();
     showChangeUrlPopUp();
+    showHelpPopUp();
+    if(showSearchBar) renderSearch();
     ImGui::End();
 }

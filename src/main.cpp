@@ -49,7 +49,7 @@ namespace ImGui{
 };
 
 
-int main(){
+int main(void){
     GLFWwindow* window;
 
     if (!glfwInit()) return -1;

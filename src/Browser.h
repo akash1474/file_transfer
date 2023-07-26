@@ -15,6 +15,7 @@ class Browser{
 	bool showHomePage=true;
 	bool showDownloads=false;
 	bool showSearchBar=false;
+	bool showHelp=false;
 	bool showChangeUrl=false;
     bool themeSelected[3] = {0, 0, 0};
     int usrTheme=0;

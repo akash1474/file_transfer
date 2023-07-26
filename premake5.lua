@@ -30,9 +30,9 @@ project "file_transfer"
    pchsource "src/pch.cpp"
 
    links {
-      "ImGui","LunaSVG","opengl32","glfw3","cpr","libcurl","zlib","user32","shell32","gdi32",
+      "glfw3","ImGui","LunaSVG","opengl32","cpr","libcurl","zlib","user32","shell32","gdi32",
       -- Curl Additional
-      "Normaliz","Ws2_32","Wldap32","Crypt32","advapi32"
+      "Normaliz","Ws2_32","Wldap32","Crypt32","advapi32","kernel32","winspool","ole32","oleaut32","uuid","comdlg32"
    }
 
    files { 
