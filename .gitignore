@@ -7,3 +7,7 @@ compile_commands.json
 !packages/lunasvg/premake5.lua
 !packages/imgui/premake5.lua
 *.sln
+*.apk
+*.filters
+*.user
+.vs

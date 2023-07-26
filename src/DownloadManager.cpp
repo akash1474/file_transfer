@@ -5,6 +5,7 @@ bool DownloadManager::initDownload(DFile* currFile){
 	if(!currFile) return false;
 	std::ofstream file=std::ofstream(currFile->title,std::ios::binary);
 	cpr::Session session=cpr::Session();
+	std::cout << "Downloading: " << currFile->location << std::endl;
 	session.SetUrl(cpr::Url{currFile->location});
 	session.SetLowSpeed(cpr::LowSpeed(1000,1000));
 	currFile->start=std::chrono::high_resolution_clock::now();

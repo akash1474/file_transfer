@@ -1,5 +1,6 @@
 #include "FontAwesome6.h"
 #include "GLFW/glfw3.h"
+#include "images.h"
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "pch.h"
@@ -10,9 +11,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
+#include <vcruntime.h>
+#include <vcruntime_string.h>
 
 
-Browser::Browser(const char* url,int w,int h):basePath(url),width(w),height(h){
+Browser::Browser(){
     std::string userFolder(getenv("USERPROFILE"));
     std::replace(userFolder.begin(), userFolder.end(), '\\', '/');
     std::string savePath=userFolder+"/file_transer";
@@ -62,13 +65,58 @@ Browser::Browser(const char* url,int w,int h):basePath(url),width(w),height(h){
                 std::cout << it.second << std::endl;
             }
         }
-
         saveSettings();
     }
-    stk.push(basePath);
-    paths.push_back("Root");
-    fetchFuture=std::async(std::launch::async,&Browser::fetchURLContent,this,basePath);
 }
+
+void processVector(std::string inputStr, std::vector<std::string>& strVec) {
+    if(strVec.empty()){
+        strVec.push_back(inputStr);
+        return;
+    }
+    auto it = std::find(strVec.begin(), strVec.end(), inputStr);
+    if (it != strVec.end()) {
+        std::rotate(strVec.begin(), it, it + 1);
+    } else {
+        strVec.insert(strVec.begin(), inputStr);
+        if (strVec.size() > 3) strVec.pop_back();
+    }
+}
+
+std::string modifyUrl(const std::string& inputUrl) {
+    std::regex urlRegex(R"((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d+)/?)");
+    std::smatch match;
+    if (std::regex_search(inputUrl, match, urlRegex)) {
+        if (match.size() == 3) {
+            std::string ip = match[1].str();
+            std::string port = match[2].str();
+            return "http://" + ip + ":" + port + "/";
+        }
+    }
+    return "";
+}
+
+bool Browser::initBrowser(std::string url){
+    std::string temp=basePath;
+    basePath=modifyUrl(url);
+    if(fetchURLContent(url)){
+        while(!stk.empty()) stk.pop();
+        paths.clear();
+        stk.push(basePath);
+        paths.push_back("Root");
+        processVector(basePath, IPs);
+        char ip[4]="";
+        for(int i=0;i<(int)IPs.size();i++){
+            sprintf(ip, "ip%d",i);
+            ini["ips"][ip]=IPs[i];
+        }
+        file->write(ini,true);
+        return true;
+    }
+    basePath=temp;
+    return false;
+}
+
 
 void Browser::saveSettings(){
     std::cout << "Saving Settings" << std::endl;
@@ -114,13 +162,10 @@ bool Browser::fetchURLContent(std::string url)
             file.isFolder = true;
             file.title = text;
             file.location = (this->basePath + href);
-            // std::cout << "Folder: - ";
         } else {
             file.title = text;
             file.location = (this->basePath + href);
         }
-        // std::cout << "File: " <<  file.title << std::endl;
-        // std::cout << "Location:" << file.location << std::endl;
         this->files.push_back(file);
         it = match.suffix().first;
     }
@@ -133,8 +178,8 @@ void Browser::renderMenuBar()
 {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Menu")) {
-            if(ImGui::MenuItem("Change IP/URL")) showChangeUrl=true;
-            if(ImGui::MenuItem("Find File")) showSearchBar=true;
+            if(ImGui::MenuItem("Change IP/URL",0,false,!showHomePage)) showChangeUrl=true;
+            if(ImGui::MenuItem("Find File",0,false,!showHomePage)) showSearchBar=true;
             if (ImGui::BeginMenu("Theme")) {
                 if (ImGui::MenuItem("Dark",0, themeSelected[0])){
                     memset(themeSelected,0,sizeof(themeSelected));
@@ -174,12 +219,14 @@ void Browser::renderMenuBar()
                 vSyncEnabled ? glfwSwapInterval(1) :  glfwSwapInterval(0);
             }
             if(ImGui::BeginMenu("Downloads")){
-                if(ImGui::BeginMenu("Location")){
-                    ImGui::MenuItem("Current Folder");
-                    ImGui::MenuItem("Downloads");
-                    ImGui::EndMenu();
+                if(ImGui::MenuItem("Current Folder",0,!defaultDownloadLocation)){
+                    defaultDownloadLocation=false;
+                    settingsUpdate=true;
                 }
-                if(ImGui::MenuItem("Change Location")){}
+                if(ImGui::MenuItem("Downloads",0,defaultDownloadLocation)){
+                    defaultDownloadLocation=true;
+                    settingsUpdate=true;
+                }
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -221,33 +268,37 @@ void showConnectionErrorUI(){
 void Browser::showChangeUrlPopUp(){
     bool showPopUp = true;
     if (ImGui::BeginPopupModal("Change URL", &showPopUp, ImGuiWindowFlags_AlwaysAutoResize)) {
-        static bool logged=false;
+        static bool isSuccess=true;
         this->showChangeUrl=false;
         ImGui::Text("Enter the new IP or select from below");
         ImGuiIO& io=ImGui::GetIO();
-        static char ip[64];
-        if(!logged){
-            std::cout << io.IniFilename << std::endl;
-            // ImGuiTable table;
-            // ImGuiSettingsHandler ini_handler;
-            // ini_handler.TypeName = "Window";
-            // ini_handler.TypeHash = ImHashStr("Window");
-            // ini_handler.ClearAllFn = ImWindowSettingsHandler_ClearAll;
-            // ini_handler.ReadOpenFn = WindowSettingsHandler_ReadOpen;
-            // ini_handler.ReadLineFn = WindowSettingsHandler_ReadLine;
-            // ini_handler.ApplyAllFn = WindowSettingsHandler_ApplyAll;
-            // ini_handler.WriteAllFn = WindowSettingsHandler_WriteAll;
-            // AddSettingsHandler(&ini_handler);
-            // table.
-            // ImGui::TableSaveSettings(ImGuiTable *table)
-            // ImGui::SaveIniSettingsToDisk("usr_settings.ini");
-            // ImGui::LoadIniSettingsFromDisk("usr_settings.init");
-            logged=true;
+        static char ip[64]="";
+        if(ImGui::InputText("##ip_input",ip,IM_ARRAYSIZE(ip),ImGuiInputTextFlags_EnterReturnsTrue) || ImGui::Button("Open",ImVec2{60,0})){
+            if(initBrowser(std::string(ip))){
+                memset(ip,0,IM_ARRAYSIZE(ip));
+                isSuccess=true;
+                ImGui::CloseCurrentPopup();
+            }else{
+                isSuccess=false;
+            }
         }
-        if(ImGui::InputText("##ip_input",ip,IM_ARRAYSIZE(ip))){
-            std::cout << ip << std::endl;
+        if(!IPs.empty()){
+            ImGui::Text("Recent URL/IP");
+            for(const auto& ip:IPs){
+                if(ImGui::Button(ip.c_str(),ImVec2{250,0})){
+                    if(initBrowser(ip)){
+                        ImGui::CloseCurrentPopup();                        
+                    }else{
+                        isSuccess=false;
+                    }
+                }
+            }
         }
-        ImGui::Button("Open",ImVec2{60,0});
+
+        if(!isSuccess){
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(255, 119, 0, 255),"Invalid URL/IP");
+        }
         ImGui::EndPopup();
     }
 
@@ -266,6 +317,11 @@ void Browser::globalKeyBindings(){
     }
     if(ImGui::IsKeyPressed(ImGuiKey_F2)){
         this->showChangeUrl=true;
+    }
+    if(ImGui::IsKeyPressed(ImGuiKey_F5)){
+        if(!fetchURLContent(stk.top())){
+            this->showConnectionError=true; 
+        }
     }
 }
 
@@ -318,6 +374,7 @@ std::vector<File> searchFile(std::string sEl,std::vector<File>& files)
 }
 
 void Browser::renderSearch(){
+    static bool isFocused=false;
     ImGui::SetNextWindowPos({0, this->height-30.0f});
     ImGui::SetNextWindowSize({(float)this->width,30.0f});
     ImGui::Begin("##SearchBar", 0,
@@ -325,19 +382,85 @@ void Browser::renderSearch(){
                      ImGuiWindowFlags_NoScrollbar| ImGuiWindowFlags_NoScrollWithMouse);
 
     ImGui::Text(ICON_FA_MAGNIFYING_GLASS); ImGui::SameLine();
-    if(!ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)){
+    if(!isFocused && !ImGui::IsAnyItemActive() && !ImGui::IsMouseClicked(0)){
         ImGui::SetKeyboardFocusHere(0);
+        isFocused=true;
     }
     ImGui::InputText("##search_text", query, IM_ARRAYSIZE(query));
     ImGui::SameLine();
-    if(ImGui::Button("Close",ImVec2{ImGui::GetContentRegionAvail().x,0})) showSearchBar=false;
+    if(ImGui::Button("Close",ImVec2{ImGui::GetContentRegionAvail().x,0})){
+        showSearchBar=false;
+        isFocused=false;
+        memset(query, 0, IM_ARRAYSIZE(query));
+    }
     ImGui::End();
 }
 
 
+void Browser::renderHomePage(){
+    static bool isFocused=false;
+    static bool isClicked=true;
+    static SVG logo_img;
+    if(!isFocused){
+        logo_img.load_from_buffer((const char*)logo,70,70);
+    }
+
+    ImGui::SetNextWindowSize({width,height});
+    ImGui::Begin("##HomePage", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |ImGuiWindowFlags_NoScrollbar);
+    renderMenuBar();
+    ImVec2 size=ImGui::GetWindowSize();
+    ImGui::SetCursorPos({(size.x-70.0f)*0.5f,190.0f});
+    ImGui::Image((void*)(intptr_t)logo_img.texture,{70,70});
+
+    ImGui::SetCursorPos({(size.x-ImGui::CalcTextSize("File Transfer").x)*0.5f,260.0f});
+    ImGui::Text("File Transfer");
+
+    ImVec2 pos{(size.x-300.0f)*0.5f,(size.y-30)*0.5f};
+    ImGui::PushItemWidth(300.0f);
+    static char buff[32]="";
+    ImGui::SetCursorPos(pos);
+    isClicked=ImGui::InputText("##url",buff, IM_ARRAYSIZE(buff),ImGuiInputTextFlags_EnterReturnsTrue);
+    ImGui::SetCursorPos({(size.x-70.0f)*0.5f,pos.y+30});
+    isClicked=(isClicked || ImGui::Button("Proceed",ImVec2{70,0}));
+
+
+    if(isClicked){
+        if(initBrowser(std::string(buff))){
+            this->showHomePage=false;
+            isClicked=false;
+        }
+        isClicked=false;
+    }
+
+    if(!IPs.empty()){
+        int y=100;
+        const char* txt="Recent URL/IP";
+        ImGui::SetCursorPos({(size.x-ImGui::CalcTextSize(txt).x)*0.5f,pos.y+y});
+        ImGui::Text("%s", txt);
+        y+=30;
+        for(const auto& ip:IPs){
+            ImGui::SetCursorPos({(size.x-250.0f)*0.5f,pos.y+y});
+            if(ImGui::Button(ip.c_str(),ImVec2{250,0})){
+                if(initBrowser(ip)){
+                    this->showHomePage=false;
+                    std::cout << basePath << std::endl;
+                }
+            }
+            y+=30;
+        }
+    }
+
+
+    ImGui::End();
+}
+
 
 void Browser::render()
 {
+    if(showHomePage){
+        renderHomePage();
+        return;
+    }
     this->globalKeyBindings();
     if(this->settingsUpdate) saveSettings();
     ImGui::ShowDemoWindow();
@@ -388,19 +511,13 @@ void Browser::render()
     ImGui::Begin("##Browser", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
     if(this->showChangeUrl) ImGui::OpenPopup("Change URL");
+    if(this->showConnectionError){
+        ImGui::OpenPopup("Connection Error");
+        this->showConnectionError=false;
+    }
 
     //No Files Present -- Connection Error
     if (files.empty()) {
-        // ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[3]);
-        // static ImVec2 iconSize = ImGui::CalcTextSize(ICON_FA_ROTATE_RIGHT);
-        // ImVec2 window = ImGui::GetWindowSize();
-        // ImVec2 position((window.x - iconSize.x) * 0.5f, (window.y - iconSize.y) * 0.5f);
-        // ImGui::SetCursorPos(position);
-        // if (ImGui::IconButton(ICON_FA_ROTATE_RIGHT, ImColor(25, 155, 255), ImColor(36, 103, 255))) {
-        //     if (!fetchURLContent(stk.top())) {
-        //         ImGui::OpenPopup("Connection Error");
-        //     }
-        // }
         ImVec2 window = ImGui::GetWindowSize();
         ImVec2 position((window.x - 120.0f) * 0.5f, (window.y - 25) * 0.5f);
         ImGui::SetCursorPos(position);

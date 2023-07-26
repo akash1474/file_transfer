@@ -24,9 +24,10 @@
 #include "FontAwesome6.h"
 #include <clipboardxx.hpp>
 #include "ini.h"
+#include "svg.h"
 
 //Icon and Font
 #include "fa-solid-900.h"
 #include "recursive_linear_medium.h"
-
+#include "images.h"
 

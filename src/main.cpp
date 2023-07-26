@@ -97,7 +97,7 @@ int main(){
     io.Fonts->AddFontFromMemoryTTF(data_icon, (int)icon_data_size,26*2.0f/3.0f,&icon_config,icons_ranges);
 
     glfwSwapInterval(1);
-    Browser browser("http://192.168.43.1:12345/",WIDTH,HEIGHT);
+    Browser browser;
     ImGuiStyle& style = ImGui::GetStyle();
     style.FrameRounding = 2.0f;
     style.ItemSpacing.y=6.0f;

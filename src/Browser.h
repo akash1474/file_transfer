@@ -11,6 +11,8 @@ class Browser{
 	std::vector<File> files;
 
 	//Settings
+	bool showConnectionError=false;
+	bool showHomePage=true;
 	bool showDownloads=false;
 	bool showSearchBar=false;
 	bool showChangeUrl=false;
@@ -20,26 +22,29 @@ class Browser{
     bool vSyncEnabled=true;
     bool settingsUpdate=false;
     std::string downloadsLocation{0};
-    bool defaultDownloadLocation=false;
+    bool defaultDownloadLocation=true;
     std::vector<std::string> IPs;
     mINI::INIFile* file{0};
     mINI::INIStructure ini;
 
 
-	float width{0};
-	float height{0};
+	float width{400};
+	float height{600};
 	std::stack<std::string> stk;
 	std::future<bool> fetchFuture;
 	std::vector<std::string> paths;
-    char query[100];
+    char query[100]="";
 
 	bool fetchURLContent(std::string url);
 	void keyBindings(int& selected,int max);
 	void globalKeyBindings();
 	void showChangeUrlPopUp();
 	void renderMenuBar();
+	bool initBrowser(std::string url);
+	void renderHomePage();
+
 public:
-	Browser(const char* url,int w,int h);
+	Browser();
 
 	void render();
 	void renderSearch();
