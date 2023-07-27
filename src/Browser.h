@@ -31,6 +31,7 @@ class Browser{
 
 	float width{400};
 	float height{600};
+	std::string usrRootDir{0};
 	std::stack<std::string> stk;
 	std::future<bool> fetchFuture;
 	std::vector<std::string> paths;
@@ -46,14 +47,8 @@ class Browser{
 
 public:
 	Browser();
-
+	bool shouldCloseWindow=false;
 	void render();
 	void renderSearch();
 	void saveSettings();
-
-	~Browser(){
-		basePath.clear();
-		saveSettings();
-	}
-
 };

@@ -1,24 +1,12 @@
-#include "FontAwesome6.h"
-#include "GLFW/glfw3.h"
-#include "images.h"
-#include "imgui.h"
-#include "imgui_internal.h"
 #include "pch.h"
 #include "Browser.h"
-#include <algorithm>
-#include <iterator>
-#include <sstream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string>
-#include <vcruntime.h>
-#include <vcruntime_string.h>
+#include <shellapi.h>
 
 
 Browser::Browser(){
-    std::string userFolder(getenv("USERPROFILE"));
-    std::replace(userFolder.begin(), userFolder.end(), '\\', '/');
-    std::string savePath=userFolder+"/file_transer";
+    usrRootDir=std::string(getenv("USERPROFILE"));
+    std::replace(usrRootDir.begin(), usrRootDir.end(), '\\', '/');
+    std::string savePath=usrRootDir+"/file_transer";
     if(!std::filesystem::exists(savePath)) std::filesystem::create_directory(savePath);
     savePath+="/ft.ini";
     file=new mINI::INIFile(savePath);
@@ -28,8 +16,8 @@ Browser::Browser(){
         std::cout << "Initializing Settings" << std::endl;
         ini["settings"]["fps"]="0";
         ini["settings"]["vsync"]="1";
-        ini["settings"]["dloc"]=(userFolder+"/Downloads/File Transfer");
-        this->downloadsLocation=userFolder+"/Downloads/File Transfer";
+        ini["settings"]["dloc"]=(usrRootDir+"/Downloads/File Transfer");
+        this->downloadsLocation=usrRootDir+"/Downloads/File Transfer";
         ini["settings"]["default"]="0";
         ini["settings"]["theme"]="0";
         themeSelected[0]=1;
@@ -41,9 +29,15 @@ Browser::Browser(){
         this->showFps= ini["settings"].has("fps") ? stoi(ini["settings"]["fps"]): false;
         this->vSyncEnabled= ini["settings"].has("vsync") ? stoi(ini["settings"]["vsync"]): true;
         if(!vSyncEnabled) glfwSwapInterval(0);
-        this->downloadsLocation= ini["settings"].has("dloc") ? ini["settings"]["dloc"]: (userFolder+"/Downloads/File Transfer");
-        if(!std::filesystem::exists(downloadsLocation)) downloadsLocation=userFolder+"/Downloads/File Transfer";
+        this->downloadsLocation= ini["settings"].has("dloc") ? ini["settings"]["dloc"]: (usrRootDir+"/Downloads/File Transfer");
+        m_DownloadManager.path=this->downloadsLocation;
+        if(!std::filesystem::exists(downloadsLocation)) downloadsLocation=usrRootDir+"/Downloads/File Transfer";
         this->defaultDownloadLocation= ini["settings"].has("default") ? stoi(ini["settings"]["default"]): false;
+        if(!defaultDownloadLocation){
+            this->downloadsLocation=std::filesystem::current_path().string()+"/";
+            std::replace(downloadsLocation.begin(),downloadsLocation.end(),'\\','/');
+            m_DownloadManager.path=this->downloadsLocation;
+        }
         usrTheme= ini["settings"].has("theme") ? stoi(ini["settings"]["theme"]): 0;
         if( 0 > usrTheme || usrTheme > 2) usrTheme=0;
         this->themeSelected[usrTheme]=1;
@@ -205,7 +199,7 @@ void Browser::renderMenuBar()
                 ImGui::EndMenu();
             }
             ImGui::MenuItem("Check Update");
-            ImGui::MenuItem("Exit");
+            if(ImGui::MenuItem("Exit")) shouldCloseWindow=true;
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Options")) {
@@ -222,10 +216,16 @@ void Browser::renderMenuBar()
                 if(ImGui::MenuItem("Current Folder",0,!defaultDownloadLocation)){
                     defaultDownloadLocation=false;
                     settingsUpdate=true;
+                    this->downloadsLocation=std::filesystem::current_path().string()+"/";
+                    std::replace(downloadsLocation.begin(),downloadsLocation.end(),'\\','/');
+                    std::cout << downloadsLocation << std::endl;
+                    m_DownloadManager.path=this->downloadsLocation;
                 }
                 if(ImGui::MenuItem("Downloads",0,defaultDownloadLocation)){
                     defaultDownloadLocation=true;
                     settingsUpdate=true;
+                    this->downloadsLocation=(usrRootDir+"/Downloads/File Transfer/");
+                    m_DownloadManager.path=this->downloadsLocation;
                 }
                 ImGui::EndMenu();
             }
@@ -333,6 +333,8 @@ void showHelpPopUp(){
 void Browser::globalKeyBindings(){
     if(ImGui::IsMouseClicked(ImGuiMouseButton_Middle)) this->showDownloads=!this->showDownloads;
     if(ImGui::IsMouseClicked(ImGuiMouseButton_Right)){
+        this->showSearchBar=false;
+        if(this->showDownloads) return;
         if(stk.size()==1) return;
         std::string last=stk.top();
         stk.pop();
@@ -462,10 +464,7 @@ void Browser::renderHomePage(){
 
 
     if(isClicked){
-        if(initBrowser(std::string(buff))){
-            this->showHomePage=false;
-            isClicked=false;
-        }
+        if(initBrowser(std::string(buff))) this->showHomePage=false; else this->showConnectionError=true;
         isClicked=false;
     }
 
@@ -478,16 +477,19 @@ void Browser::renderHomePage(){
         for(const auto& ip:IPs){
             ImGui::SetCursorPos({(size.x-250.0f)*0.5f,pos.y+y});
             if(ImGui::Button(ip.c_str(),ImVec2{250,0})){
-                if(initBrowser(ip)){
-                    this->showHomePage=false;
-                    std::cout << basePath << std::endl;
-                }
+                if(initBrowser(ip)) this->showHomePage=false; else this->showConnectionError=true;
             }
             y+=30;
         }
     }
+    if(showConnectionError){
+        showConnectionError=false;
+        ImGui::OpenPopup("Connection Error");
+    }
+    if(settingsUpdate) saveSettings();
 
     showHelpPopUp();
+    showConnectionErrorUI();
     ImGui::End();
 }
 
@@ -522,7 +524,7 @@ void Browser::render()
     } else {
         ImGui::Text("Downloads");
         ImGui::SetCursorPos({ImGui::GetWindowWidth() - 170, 28.0f});
-        if(ImGui::Button("Open Downloads",ImVec2{0,24})) system("explorer .");
+        if(ImGui::Button("Open Downloads",ImVec2{0,24})) ShellExecuteA(NULL, "open", this->downloadsLocation.c_str(), NULL, NULL, SW_SHOWDEFAULT);
     }
 
 

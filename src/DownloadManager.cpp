@@ -1,11 +1,13 @@
 #include "pch.h"
 #include "DownloadManager.h"
+#include <shellapi.h>
 
 bool DownloadManager::initDownload(DFile* currFile){
 	if(!currFile) return false;
-	std::ofstream file=std::ofstream(currFile->title,std::ios::binary);
+	std::ofstream file=std::ofstream((this->path+currFile->title),std::ios::binary);
 	cpr::Session session=cpr::Session();
 	std::cout << "Downloading: " << currFile->location << std::endl;
+	std::cout << "Location: " << this->path+currFile->title << std::endl;
 	session.SetUrl(cpr::Url{currFile->location});
 	session.SetLowSpeed(cpr::LowSpeed(1000,1000));
 	currFile->start=std::chrono::high_resolution_clock::now();
@@ -36,7 +38,7 @@ inline float fround(float var)
     return (float)value / 100;
 }
 
-bool DComponent(DFile* file){
+bool DownloadManager::DComponent(DFile* file){
 	//Speed Calculation
 	file->end=std::chrono::high_resolution_clock::now();
 	file->duration=file->end - file->start;
@@ -69,7 +71,14 @@ bool DComponent(DFile* file){
     ImGui::ItemSize(bb,0);
     if (!ImGui::ItemAdd(bb, id)) return false;
 
-	window->DrawList->AddRectFilled(pos, bb.Max,ImGui::GetColorU32(ImGuiCol_FrameBg),2);
+    bool isHovered=false;
+    bool isHeld=false;
+    bool isClicked=ImGui::ButtonBehavior(bb, id, &isHovered,&isHeld,ImGuiButtonFlags_AllowOverlap | ImGuiButtonFlags_PressedOnDoubleClick);
+	window->DrawList->AddRectFilled(pos, bb.Max,ImGui::GetColorU32(isHovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg),2);
+	if(file->isDownloaded && isClicked){
+		std::cout << "Opening.. " << std::endl;
+		ShellExecute(0, 0, (path+file->title).c_str(), 0, 0 , SW_SHOW );
+	}
 	ImGui::RenderTextWrapped({pos.x+5,pos.y+5}, file->title.c_str(),0,threshold);
 	window->DrawList->AddRectFilled(
 		{pos.x+5,pos.y+textSize.y},
@@ -92,18 +101,21 @@ bool DComponent(DFile* file){
 	ImGui::RenderText(ImVec2(window->Size.x-150,pos.y+textSize.y+15),progress);
 	ImGui::PopFont();	
 
+	static std::string x=(file->title+"bid");
+	const ImGuiID idx = window->GetID(x.c_str());
+
 	ImVec2 bPos{window->Size.x-40,pos.y+((size.y-20)*0.5f)};
 	ImRect buttonSize{bPos,{bPos.x+20,bPos.y+20}};
     const ImVec2 label_size = ImGui::CalcTextSize(file->isDownloading ? ICON_FA_XMARK : ICON_FA_TRASH, NULL, true);
 
     bool isButtonHovered=false;
     bool isButtonHeld=false;
-    bool isButtonClicked=ImGui::ButtonBehavior(buttonSize, id, &isButtonHovered,&isButtonHeld);
+    bool isButtonClicked=ImGui::ButtonBehavior(buttonSize, idx, &isButtonHovered,&isButtonHeld,ImGuiButtonFlags_PressedOnClick);
 
     const ImU32 col = ImGui::GetColorU32((isButtonHeld && isButtonHovered) ? ImGuiCol_ButtonActive : isButtonHovered ? ImGuiCol_ButtonHovered : ImGuiCol_Button);
-    ImGui::RenderNavHighlight(buttonSize, id);
+    ImGui::RenderNavHighlight(buttonSize, idx);
     ImGui::RenderFrame(buttonSize.Min, buttonSize.Max, col, true, style.FrameRounding);
-    ImGui::RenderTextClipped(buttonSize.Min + style.FramePadding, ImVec2{buttonSize.Max.x-style.FramePadding.x,buttonSize.Max.y-style.FramePadding.y},file->isDownloading ? ICON_FA_XMARK : ICON_FA_TRASH, NULL, &label_size, style.ButtonTextAlign, &buttonSize);
+    ImGui::RenderTextClipped(ImVec2{buttonSize.Min.x+style.FramePadding.x,buttonSize.Min.y+style.FramePadding.y}, ImVec2{buttonSize.Max.x-style.FramePadding.x,buttonSize.Max.y-style.FramePadding.y},file->isDownloading ? ICON_FA_XMARK : ICON_FA_TRASH, NULL, &label_size, style.ButtonTextAlign, &buttonSize);
     return isButtonClicked;
 }
 
@@ -135,13 +147,14 @@ void DownloadManager::render(){
     		(*it)->isDownloading=false;
     		(*it)->isDownloaded=false;
     		std::cout << "Downloads: " << downloads.size() << " Futures: " << futures.size() << std::endl;
-    		std::cout << "Deleting:" << (*it)->title;
+    		std::cout << "Deleting:" << (*it)->title << std::endl;;
     		std::string title=(*it)->title;
     		delete *it;
     		it=this->downloads.erase(it);
     		itf=this->futures.erase(itf);
     		std::cout << "Downloads: " << downloads.size() << " Futures: " << futures.size() << std::endl;
-    		if(std::filesystem::exists(title)) std::filesystem::remove(title);
+    		std::cout << "Delete Path: " << (this->path+title) << std::endl;
+    		if(std::filesystem::exists((this->path+title))) std::filesystem::remove((this->path+title));
     	}else{
     		it++;
     		itf++;
