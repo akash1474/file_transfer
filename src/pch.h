@@ -25,6 +25,7 @@
 #include <clipboardxx.hpp>
 #include "ini.h"
 #include "svg.h"
+#include "Log.h"
 
 //Icon and Font
 #include "fa-solid-900.h"

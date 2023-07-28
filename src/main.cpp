@@ -1,12 +1,11 @@
-#include "FontAwesome6.h"
-#include "GLFW/glfw3.h"
-#include "imgui.h"
 #include "pch.h"
 #include "Browser.h"
 
 #define WIDTH 400
 #define HEIGHT 600
-
+Browser* brptr{0};
+int width{0};
+int height{0};
 
 void window_close_callback(GLFWwindow* window)
 {
@@ -14,16 +13,52 @@ void window_close_callback(GLFWwindow* window)
     glfwDestroyWindow(window);
 }
 
+void draw(GLFWwindow* window)
+{
+    if(brptr->width!=width|| brptr->height!=height){
+        brptr->width=width;
+        brptr->height=height;
+    }
+    glfwGetWindowSize(window, &width, &height);
+    // Rendering code goes here
+    glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    ImGui_ImplOpenGL2_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    // Render Other Stuff
+
+
+    // Render Imgui Stuff
+    brptr->render();
+
+
+    // End of render
+    ImGui::Render();
+    ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+    glfwSwapBuffers(window);
+}
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+    draw(window);
+}
+
+
 int main(void){
     GLFWwindow* window;
+    FTransfer::Log::Init();
 
     if (!glfwInit()) return -1;
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
 
     window = glfwCreateWindow(WIDTH, HEIGHT, "File Transfer", NULL, NULL);
+    glfwSetWindowSizeLimits(window, 330, 500, GLFW_DONT_CARE, GLFW_DONT_CARE);
     if (!window) {
         glfwTerminate();
         return -1;
@@ -37,8 +72,9 @@ int main(void){
     ImGuiIO& io = ImGui::GetIO();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
 
-    if (!ImGui_ImplOpenGL2_Init()) std::cout << "Failed to initit OpenGL 2" << std::endl;
+    if (!ImGui_ImplOpenGL2_Init()) FT_ERROR("Failed to initit OpenGL 2");
 
+    FT_INFO("Initializing Fonts");
     io.Fonts->Clear();
     ImFontConfig icon_config;
     icon_config.MergeMode = true;
@@ -66,14 +102,21 @@ int main(void){
     style.ItemSpacing.y=6.0f;
     style.ScrollbarRounding=2.0f;
     glfwSetWindowCloseCallback(window, window_close_callback);
+    brptr=&browser;
 
     while (!glfwWindowShouldClose(window)) {
         if(browser.shouldCloseWindow){
             glfwDestroyWindow(window);
             break;
         }
+        if(browser.width!=width|| browser.height!=height){
+            browser.width=width;
+            browser.height=height;
+        }
+        glfwGetWindowSize(window, &width, &height);
         glClearColor(0.07f, 0.13f, 0.17f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
         ImGui_ImplOpenGL2_NewFrame();
         ImGui_ImplGlfw_NewFrame();

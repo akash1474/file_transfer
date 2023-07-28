@@ -6,15 +6,15 @@ bool DownloadManager::initDownload(DFile* currFile){
 	if(!currFile) return false;
 	std::ofstream file=std::ofstream((this->path+currFile->title),std::ios::binary);
 	cpr::Session session=cpr::Session();
-	std::cout << "Downloading: " << currFile->location << std::endl;
-	std::cout << "Location: " << this->path+currFile->title << std::endl;
+	FT_INFO("Downloading: {}",currFile->location);
+	FT_INFO("Save Path: {}",path+currFile->title);
 	session.SetUrl(cpr::Url{currFile->location});
 	session.SetLowSpeed(cpr::LowSpeed(1000,1000));
 	currFile->start=std::chrono::high_resolution_clock::now();
 	session.SetProgressCallback(cpr::ProgressCallback([&currFile](cpr::cpr_off_t downloadTotal, cpr::cpr_off_t downloadNow, cpr::cpr_off_t uploadTotal, cpr::cpr_off_t uploadNow, intptr_t userdata)->bool{
 		if(!currFile->isDownloading) return false;
 		currFile->dps+=(float)(downloadNow-currFile->downloaded);
-		currFile->size=downloadTotal;
+		currFile->size=(uint32_t)downloadTotal;
 		currFile->progress=(float)downloadNow/downloadTotal;
 		if(currFile->getSpeed){
 			currFile->speed=(currFile->dps/1048576)*5; // Converting B -> MiB * 5 to get MiB/s 
@@ -24,18 +24,12 @@ bool DownloadManager::initDownload(DFile* currFile){
 		currFile->downloaded=(float)downloadNow;
 		return true;
 	}));
+
 	cpr::Response res=session.Download(file);
 	if(res.status_code==200) currFile->isDownloaded=true;
 	currFile->isDownloading=false;
-    std::cout << "Downloaded: " << currFile->title << " : " << (int)res.downloaded_bytes/1024 << "kb" << std::endl;
+    FT_INFO("DOWNLOADED: {0} : {1} KB",currFile->title,res.downloaded_bytes/1024);
     return true;
-
-}
-
-inline float fround(float var)
-{
-    float value = (int)(var * 100 + .5);
-    return (float)value / 100;
 }
 
 bool DownloadManager::DComponent(DFile* file){
@@ -54,12 +48,12 @@ bool DownloadManager::DComponent(DFile* file){
 	ImGuiContext& g = *GImGui;
 	const ImGuiStyle& style = g.Style;
 	const ImGuiID id = window->GetID(file->title.c_str());
-	const int threshold=window->Size.x-80;
+	float threshold=window->Size.x-80.0f;
 
 
 	ImVec2 textSize=ImGui::CalcTextSize(file->title.c_str());
 	textSize.y+=10;
-	const int original=textSize.y-10;
+	float original=textSize.y-10.0f;
 	while(textSize.x >threshold){
 		textSize.y+=original;
 		textSize.x-=threshold;
@@ -75,17 +69,14 @@ bool DownloadManager::DComponent(DFile* file){
     bool isHeld=false;
     bool isClicked=ImGui::ButtonBehavior(bb, id, &isHovered,&isHeld,ImGuiButtonFlags_AllowOverlap | ImGuiButtonFlags_PressedOnDoubleClick);
 	window->DrawList->AddRectFilled(pos, bb.Max,ImGui::GetColorU32(isHovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg),2);
-	if(file->isDownloaded && isClicked){
-		std::cout << "Opening.. " << std::endl;
-		ShellExecute(0, 0, (path+file->title).c_str(), 0, 0 , SW_SHOW );
-	}
+	if(file->isDownloaded && isClicked) ShellExecute(0, 0, (path+file->title).c_str(), 0, 0 , SW_SHOW );
 	ImGui::RenderTextWrapped({pos.x+5,pos.y+5}, file->title.c_str(),0,threshold);
 	window->DrawList->AddRectFilled(
 		{pos.x+5,pos.y+textSize.y},
 		ImVec2(pos.x+window->Size.x-60,pos.y+textSize.y+10),
 		ImColor(10,10,10),
 		2);
-	float width=file->progress*abs(window->Size.x-60-5.0);
+	float width=file->progress*(float)abs(window->Size.x-60-5.0);
 	window->DrawList->AddRectFilled(
 		{pos.x+5,pos.y+textSize.y},
 		ImVec2(pos.x+5+width,pos.y+textSize.y+10),
@@ -131,7 +122,7 @@ void DownloadManager::addDownload(File* file){
 }
 
 void DownloadManager::render(){
-    ImGui::Begin("##Downloads",0,ImGuiWindowFlags_NoNav|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
+    ImGui::Begin("##Downloads",0,ImGuiWindowFlags_NoMove|ImGuiWindowFlags_NoNav|ImGuiWindowFlags_NoTitleBar|ImGuiWindowFlags_NoResize);
     if(downloads.empty()){
     	const char* msg="No Downloads Available!";
     	ImVec2 textSize=ImGui::CalcTextSize(msg);
@@ -146,14 +137,13 @@ void DownloadManager::render(){
     	if(DComponent(*it)){
     		(*it)->isDownloading=false;
     		(*it)->isDownloaded=false;
-    		std::cout << "Downloads: " << downloads.size() << " Futures: " << futures.size() << std::endl;
-    		std::cout << "Deleting:" << (*it)->title << std::endl;;
+    		FT_INFO("Downloads: {0} Futures: {1}",downloads.size(),futures.size());
     		std::string title=(*it)->title;
     		delete *it;
     		it=this->downloads.erase(it);
     		itf=this->futures.erase(itf);
-    		std::cout << "Downloads: " << downloads.size() << " Futures: " << futures.size() << std::endl;
-    		std::cout << "Delete Path: " << (this->path+title) << std::endl;
+    		FT_INFO("Downloads: {0} Futures: {1}",downloads.size(),futures.size());
+    		FT_WARN("Delete Path: {}",this->path+title);
     		if(std::filesystem::exists((this->path+title))) std::filesystem::remove((this->path+title));
     	}else{
     		it++;

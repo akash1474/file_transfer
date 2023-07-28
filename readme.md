@@ -1,4 +1,7 @@
 # File Transer
+<p align="center">
+  <img width="256" height="256" src="./assets/logo.svg">
+</p>
 ## Setup
 ### CPRLIB
 Build as static library using cmake with release config

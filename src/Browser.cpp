@@ -1,3 +1,4 @@
+#include "imgui.h"
 #include "pch.h"
 #include "Browser.h"
 #include <shellapi.h>
@@ -13,7 +14,7 @@ Browser::Browser(){
     file->read(ini);
     if(!std::filesystem::exists(savePath)){
         //Initilze
-        std::cout << "Initializing Settings" << std::endl;
+        FT_INFO("Initializing Settings");
         ini["settings"]["fps"]="0";
         ini["settings"]["vsync"]="1";
         ini["settings"]["dloc"]=(usrRootDir+"/Downloads/File Transfer");
@@ -24,7 +25,7 @@ Browser::Browser(){
         file->write(ini,true);
     }else{
         //Load
-        std::cout << "Loading Settings" << std::endl;
+        FT_INFO("Loading Settings");
         if(!ini.has("settings")) ini["settings"];
         this->showFps= ini["settings"].has("fps") ? stoi(ini["settings"]["fps"]): false;
         this->vSyncEnabled= ini["settings"].has("vsync") ? stoi(ini["settings"]["vsync"]): true;
@@ -54,9 +55,10 @@ Browser::Browser(){
             break;
         }
         if(ini.has("ips")){
+            FT_INFO("IP LOADED: ");
             for(auto const& it:ini["ips"]){
                 this->IPs.push_back(it.second);
-                std::cout << it.second << std::endl;
+                FT_INFO("\t{}",it.second);
             }
         }
         saveSettings();
@@ -113,7 +115,7 @@ bool Browser::initBrowser(std::string url){
 
 
 void Browser::saveSettings(){
-    std::cout << "Saving Settings" << std::endl;
+    FT_INFO("Saving Settings");
     ini["settings"]["fps"]=this->showFps ? "1" : "0";
     ini["settings"]["vsync"]=this->vSyncEnabled ? "1":"0";
     ini["settings"]["dloc"]=this->downloadsLocation;
@@ -127,7 +129,7 @@ void Browser::saveSettings(){
 
 bool Browser::fetchURLContent(std::string url)
 {
-    std::cout << "Fetching: " << url << std::endl;
+    FT_INFO("Fetching: {}",url);
     cpr::Response response = cpr::Get(cpr::Url(url));
 
     if (response.status_code != 200) {
@@ -218,7 +220,7 @@ void Browser::renderMenuBar()
                     settingsUpdate=true;
                     this->downloadsLocation=std::filesystem::current_path().string()+"/";
                     std::replace(downloadsLocation.begin(),downloadsLocation.end(),'\\','/');
-                    std::cout << downloadsLocation << std::endl;
+                    FT_INFO("Location: {}",downloadsLocation);
                     m_DownloadManager.path=this->downloadsLocation;
                 }
                 if(ImGui::MenuItem("Downloads",0,defaultDownloadLocation)){
@@ -246,8 +248,8 @@ void Browser::renderMenuBar()
         if(showFps){
             static char fps[16];
             sprintf_s(fps,"%.2f FPS",ImGui::GetIO().Framerate);
-            static float width=(ImGui::GetContentRegionAvail().x-ImGui::CalcTextSize(fps).x)-10;
-            ImGui::Dummy({width,10});
+            float posx=(width-ImGui::CalcTextSize(fps).x)-10;
+            ImGui::SetCursorPos({posx,0});
             ImGui::Text("%s", fps);
         }
         ImGui::EndMenuBar();
@@ -412,7 +414,7 @@ void Browser::renderSearch(){
     ImGui::SetNextWindowPos({0, this->height-30.0f});
     ImGui::SetNextWindowSize({(float)this->width,30.0f});
     ImGui::Begin("##SearchBar", 0,
-                 ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+                 ImGuiWindowFlags_NoMove| ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                      ImGuiWindowFlags_NoScrollbar| ImGuiWindowFlags_NoScrollWithMouse);
 
     ImGui::Text(ICON_FA_MAGNIFYING_GLASS); ImGui::SameLine();
@@ -441,27 +443,27 @@ void Browser::renderHomePage(){
     if(ImGui::IsKeyPressed(ImGuiKey_F1)) showHelp=true;
 
     ImGui::SetNextWindowSize({width,height});
-    ImGui::Begin("##HomePage", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |ImGuiWindowFlags_NoScrollbar);
+    ImGui::SetNextWindowPos({0,0});
+    ImGui::Begin("##HomePage", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |ImGuiWindowFlags_NoScrollbar);
     renderMenuBar();
     if(showHelp){
        ImGui::OpenPopup("Help"); 
        showHelp=false;
     }
     ImVec2 size=ImGui::GetWindowSize();
-    ImGui::SetCursorPos({(size.x-70.0f)*0.5f,190.0f});
+    ImVec2 pos{(size.x-300.0f)*0.5f,(size.y-30)*0.5f};
+    ImGui::SetCursorPos({(size.x-70.0f)*0.5f,pos.y-100});
     ImGui::Image((void*)(intptr_t)logo_img.texture,{70,70});
 
-    ImGui::SetCursorPos({(size.x-ImGui::CalcTextSize("File Transfer").x)*0.5f,260.0f});
+    ImGui::SetCursorPos({(size.x-ImGui::CalcTextSize("File Transfer").x)*0.5f,pos.y-20.0f});
     ImGui::Text("File Transfer");
 
-    ImVec2 pos{(size.x-300.0f)*0.5f,(size.y-30)*0.5f};
     ImGui::PushItemWidth(300.0f);
     static char buff[32]="";
     ImGui::SetCursorPos(pos);
     isClicked=ImGui::InputText("##url",buff, IM_ARRAYSIZE(buff),ImGuiInputTextFlags_EnterReturnsTrue);
     ImGui::SetCursorPos({(size.x-70.0f)*0.5f,pos.y+30});
     isClicked=(isClicked || ImGui::Button("Proceed",ImVec2{70,0}));
-
 
     if(isClicked){
         if(initBrowser(std::string(buff))) this->showHomePage=false; else this->showConnectionError=true;
@@ -502,11 +504,13 @@ void Browser::render()
     }
     this->globalKeyBindings();
     if(this->settingsUpdate) saveSettings();
+    #ifdef DEBUG
     ImGui::ShowDemoWindow();
+    #endif
     const float headerHeight = 60.0f;
     ImGui::SetNextWindowPos({0, 0});
     ImGui::SetNextWindowSize({(float)this->width, headerHeight});
-    ImGui::Begin("##Header", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |ImGuiWindowFlags_NoScrollbar);
+    ImGui::Begin("##Header", 0,ImGuiWindowFlags_NoMove| ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar |ImGuiWindowFlags_NoScrollbar);
     renderMenuBar();
 
     ImGui::SetCursorPos({5, 28.0f});
@@ -544,7 +548,7 @@ void Browser::render()
     }
 
 
-    ImGui::Begin("##Browser", 0, ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
+    ImGui::Begin("##Browser", 0, ImGuiWindowFlags_NoMove| ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize);
 
     if(this->showChangeUrl) ImGui::OpenPopup("Change URL");
     if(this->showHelp){
@@ -617,7 +621,7 @@ void Browser::render()
             }
             if (!showSearchBar && this->files.at(selected).isFolder) {
                 File* currFolder = &this->files[selected];
-                std::cout << "PATH: " << currFolder->location << std::endl;
+                FT_INFO("PATH: {0}",currFolder->location);
                 stk.push(currFolder->location);
                 paths.push_back(currFolder->title.substr(0, currFolder->title.size() - 1));
                 if(!this->fetchURLContent(currFolder->location)){

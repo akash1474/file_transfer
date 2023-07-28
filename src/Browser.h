@@ -29,8 +29,6 @@ class Browser{
     mINI::INIStructure ini;
 
 
-	float width{400};
-	float height{600};
 	std::string usrRootDir{0};
 	std::stack<std::string> stk;
 	std::future<bool> fetchFuture;
@@ -46,6 +44,8 @@ class Browser{
 	void renderHomePage();
 
 public:
+	float width{400};
+	float height{600};
 	Browser();
 	bool shouldCloseWindow=false;
 	void render();

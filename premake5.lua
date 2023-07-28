@@ -1,5 +1,3 @@
--- Building
--- MsBuild XPlayer.sln /p:configuration=Release
 
 workspace "FileTransfer"
    architecture "x64"
@@ -32,11 +30,12 @@ project "file_transfer"
    links {
       "glfw3","ImGui","LunaSVG","opengl32","cpr","libcurl","zlib","user32","shell32","gdi32",
       -- Curl Additional
-      "Normaliz","Ws2_32","Wldap32","Crypt32","advapi32","kernel32","winspool","ole32","oleaut32","uuid","comdlg32"
+      "Normaliz","Ws2_32","Wldap32","Crypt32","advapi32","kernel32","winspool","ole32","oleaut32","uuid","comdlg32",
+      "winmm","imm32","setupapi","version","libcmt"
    }
 
    files { 
-         "src/**.cpp"
+      "src/**.cpp"
    }
 
    includedirs{
@@ -53,6 +52,8 @@ project "file_transfer"
 
    filter "system:windows"
       systemversion "latest"
+         files { 'setup.rc', '**.ico' }
+         vpaths { ['./*'] = { '*.rc', '**.ico' }}
 
    filter "configurations:Debug"
       runtime "Debug"
@@ -69,6 +70,7 @@ project "file_transfer"
       characterset ("MBCS")
       staticruntime "On"
       buildoptions { "/MP","/utf-8" }
+      defines {"FT_DEBUG","_CRT_SECURE_NO_WARNINGS"}
 
    filter "configurations:Dist"
       kind "WindowedApp"
@@ -77,3 +79,5 @@ project "file_transfer"
       symbols "Off"
       characterset ("MBCS")
       staticruntime "On"
+      buildoptions { "/MP","/utf-8"}
+      linkoptions {"/ENTRY:mainCRTStartup"}
