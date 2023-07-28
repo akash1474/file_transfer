@@ -9,7 +9,7 @@ A Simple Software Application for transferring files from phone to pc. This is d
 The application allows multiple files located in different folder to be downloaded simultaneously. I also provides a minimal and interactive user interface.
 
 
-> **Warning**:
+> **Warning**
 > The application is still in development stage some unwanted bugs might occur. Feel free to raise issues on this github page.
 
 
@@ -31,5 +31,5 @@ Build as static library using cmake with release config and copy include and lib
 
 ### ImGui LunaSVG spdlog
 Just clone the repository and the respective folder and that's it.
-> **Note**:
+> **Note**
 > Place all the required imgui files from the repository along with the one used for interfacing with glfw backend and that's all. All the files should be located in the `packages/imgui` 
