@@ -175,7 +175,10 @@ void Browser::renderMenuBar()
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("Menu")) {
             if(ImGui::MenuItem("Change IP/URL",0,false,!showHomePage)) showChangeUrl=true;
-            if(ImGui::MenuItem("Find File",0,false,!showHomePage)) showSearchBar=true;
+            if(ImGui::MenuItem("Find File",0,false,!showHomePage)){
+                showDownloads=false;
+                showSearchBar=true;
+            }
             if (ImGui::BeginMenu("Theme")) {
                 if (ImGui::MenuItem("Dark",0, themeSelected[0])){
                     memset(themeSelected,0,sizeof(themeSelected));
@@ -200,7 +203,7 @@ void Browser::renderMenuBar()
                 }
                 ImGui::EndMenu();
             }
-            ImGui::MenuItem("Check Update");
+            if(ImGui::MenuItem("Check Update")) ShellExecute(0, 0,"https://github.com/akash1474/file_transfer", 0, 0 , SW_SHOW );
             if(ImGui::MenuItem("Exit")) shouldCloseWindow=true;
             ImGui::EndMenu();
         }
@@ -239,8 +242,8 @@ void Browser::renderMenuBar()
             ImGui::Text("©Akash Pandit. All Rights Reserved");
             ImGui::Spacing();
             ImGui::Spacing();
-            ImGui::Text("Version: 0.1.2");
-            ImGui::Text("Contact: panditakash38@gmail.com");
+            ImGui::Text("Version: 0.1.0");
+            ImGui::Text("GitHub: github.com/akash1474");
             ImGui::Separator();
             if(ImGui::MenuItem("Help","F1")) showHelp=true;
             ImGui::EndMenu();
@@ -259,6 +262,7 @@ void Browser::renderMenuBar()
 void showConnectionErrorUI(){
     bool openPopup = true;
     if (ImGui::BeginPopupModal("Connection Error", &openPopup, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if(ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
         ImGui::Text("Unable to connect the device");
         ImGui::Separator();
         ImGui::SetCursorPos(ImVec2{(ImGui::GetWindowWidth() - 50) * 0.5f, ImGui::GetCursorPosY()});
@@ -270,6 +274,7 @@ void showConnectionErrorUI(){
 void Browser::showChangeUrlPopUp(){
     bool showPopUp = true;
     if (ImGui::BeginPopupModal("Change URL", &showPopUp, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if(ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
         static bool isSuccess=true;
         this->showChangeUrl=false;
         ImGui::Text("Enter the new IP or select from below");
@@ -311,6 +316,7 @@ void Browser::showChangeUrlPopUp(){
 void showHelpPopUp(){
     bool openPopup = true;
     if (ImGui::BeginPopupModal("Help", &openPopup, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if(ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
         ImGui::Text("Mouse Bindings");
         ImGui::Separator();
         ImGui::Text("Double Click  - Enter Folder / Download File");
@@ -351,7 +357,10 @@ void Browser::globalKeyBindings(){
         this->showDownloads=false;
         this->showSearchBar=false;
     }
-    if(ImGui::IsKeyPressed(ImGuiKey_Slash)) this->showSearchBar=true;
+    if(ImGui::IsKeyPressed(ImGuiKey_Slash)){
+        this->showDownloads=false;
+        this->showSearchBar=true;
+    }
     if(ImGui::IsKeyPressed(ImGuiKey_F1)) this->showHelp=true;
     if(ImGui::IsKeyPressed(ImGuiKey_F2)) this->showChangeUrl=true;
     if(ImGui::IsKeyPressed(ImGuiKey_F5)){
@@ -653,6 +662,7 @@ void Browser::render()
 
     bool openPopup = true;
     if (ImGui::BeginPopupModal("Download Exists", &openPopup, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if(ImGui::IsKeyPressed(ImGuiKey_Escape)) ImGui::CloseCurrentPopup();
         ImGui::Text("File already exists!");
         ImGui::Separator();
         ImGui::Text("Do you want to re-download file?");

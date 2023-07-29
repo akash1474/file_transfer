@@ -1,8 +1,11 @@
 #include "pch.h"
 #include "Browser.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_img.h"
 
 #define WIDTH 400
 #define HEIGHT 600
+
 Browser* brptr{0};
 int width{0};
 int height{0};
@@ -49,7 +52,9 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 int main(void){
     GLFWwindow* window;
+    #ifdef FT_DEBUG
     FTransfer::Log::Init();
+    #endif
 
     if (!glfwInit()) return -1;
 
@@ -65,6 +70,11 @@ int main(void){
     }
 
     glfwMakeContextCurrent(window);
+
+    GLFWimage images[1]; 
+    images[0].pixels = stbi_load_from_memory(logo_img,IM_ARRAYSIZE(logo_img), &images[0].width, &images[0].height, 0, 4); //rgba channels 
+    glfwSetWindowIcon(window, 1, images); 
+    stbi_image_free(images[0].pixels);
 
     // Initialize ImGUI
     IMGUI_CHECKVERSION();
@@ -103,6 +113,7 @@ int main(void){
     style.ScrollbarRounding=2.0f;
     glfwSetWindowCloseCallback(window, window_close_callback);
     brptr=&browser;
+    ImGui::GetIO().IniFilename=NULL;
 
     while (!glfwWindowShouldClose(window)) {
         if(browser.shouldCloseWindow){
