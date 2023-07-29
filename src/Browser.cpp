@@ -19,6 +19,7 @@ Browser::Browser(){
         ini["settings"]["vsync"]="1";
         ini["settings"]["dloc"]=(usrRootDir+"/Downloads/File Transfer");
         this->downloadsLocation=usrRootDir+"/Downloads/File Transfer";
+        if(!std::filesystem::exists(downloadsLocation)) std::filesystem::create_directory(downloadsLocation);
         ini["settings"]["default"]="0";
         ini["settings"]["theme"]="0";
         themeSelected[0]=1;
@@ -33,6 +34,7 @@ Browser::Browser(){
         this->downloadsLocation= ini["settings"].has("dloc") ? ini["settings"]["dloc"]: (usrRootDir+"/Downloads/File Transfer");
         m_DownloadManager.path=this->downloadsLocation;
         if(!std::filesystem::exists(downloadsLocation)) downloadsLocation=usrRootDir+"/Downloads/File Transfer";
+        if(!std::filesystem::exists(downloadsLocation)) std::filesystem::create_directory(downloadsLocation);
         this->defaultDownloadLocation= ini["settings"].has("default") ? stoi(ini["settings"]["default"]): false;
         if(!defaultDownloadLocation){
             this->downloadsLocation=std::filesystem::current_path().string()+"/";

@@ -4,9 +4,9 @@
 <p align="center">
   <img width="256" height="256" src="https://raw.githubusercontent.com/akash1474/file_transfer/abb7d72fe8b68efcd46e5af9df474f1af73720e3/assets/iot.svg"> 
 </p>
-A Simple Software Application for transferring files from phone to pc. This is done by starting a server on your android device using the application called SimpleHttpServer. The IP/URL displayed after starting the server is required to be entered to be connected. Once connected android device files and folder can be explored and downloaded.
+A Simple Software Application for transferring files from phone to pc. This is done by starting a server on your android device using the application called [SimpleHttpServer](https://play.google.com/store/apps/details?id=jp.ubi.common.http.server). The IP/URL displayed after starting the server is required to be entered to be connected. Once connected android device files and folder can be explored and downloaded.
 
-The application allows multiple files located in different folder to be downloaded simultaneously. I also provides a minimal and interactive user interface.
+The application allows multiple files located in different folder to be downloaded simultaneously. It also provides a minimal and interactive user interface.
 
 
 > **Warning**
@@ -17,7 +17,7 @@ The application allows multiple files located in different folder to be download
 Requirements:
 * Premake5 - Configuration Generator
 * Visual Studio 2022 - Compiling 
-* SimpleHttpServer
+* [SimpleHttpServer](https://play.google.com/store/apps/details?id=jp.ubi.common.http.server)
 
 ### CPRLIB
 Build as static library using cmake with release config
