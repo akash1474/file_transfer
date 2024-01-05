@@ -29,7 +29,6 @@ project "file_transfer"
 
    links {
       "glfw3","ImGui","LunaSVG","opengl32","cpr","libcurl","zlib","user32","shell32","gdi32",
-      -- Curl Additional
       "Normaliz","Ws2_32","Wldap32","Crypt32","advapi32","kernel32","winspool","ole32","oleaut32","uuid","comdlg32",
       "winmm","imm32","setupapi","version","libcmt"
    }
@@ -75,7 +74,7 @@ project "file_transfer"
    filter "configurations:Dist"
       kind "WindowedApp"
       runtime "Release"
-      optimize "On"
+      optimize "speed"
       symbols "Off"
       characterset ("MBCS")
       staticruntime "On"
